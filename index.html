@@ -431,12 +431,12 @@ function doLogin() {
     return;
   }
 
-  var u = document.getElementById('loginUser').value.trim().toLowerCase();
+  var u = document.getElementById('loginUser').value.trim();
   var p = document.getElementById('loginPass').value;
 
   if (!u || !p) { showLoginError('Username aur password dono bharo!'); return; }
 
-  var found = USERS.find(function(x){ return x.username === u && x.passHash === hashPass(p); });
+  var found = USERS.find(function(x){ return x.username.toLowerCase() === u.toLowerCase() && x.passHash === hashPass(p); });
 
   if (found) {
     // Reset attempts
@@ -451,7 +451,7 @@ function doLogin() {
     document.getElementById('loginPass').value = '';
     // Show logged in user
     document.getElementById('loggedUser').textContent = '👤 ' + found.username;
-    if (localStorage.getItem('gh_token')) loadFromGitHub();
+    if (getGHToken()) loadFromGitHub();
   } else {
     // Track failed attempts
     var attempts = parseInt(localStorage.getItem('rl_attempts') || '0') + 1;
