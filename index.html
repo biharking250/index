@@ -121,6 +121,44 @@ canvas{max-height:300px;}
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:#0f172a;z-index:9999;justify-content:center;align-items:center;">
+  <div id="loginBox" style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:40px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+    <div style="text-align:center;margin-bottom:30px;">
+      <div style="font-size:40px;margin-bottom:10px;">🎫</div>
+      <div style="font-size:22px;font-weight:700;color:#38bdf8;letter-spacing:1px;">RailDesk</div>
+      <div style="font-size:13px;color:#475569;margin-top:4px;">Billing & Ticket System</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px;">USERNAME</label>
+        <input id="loginUser" type="text" placeholder="Enter username" autocomplete="off" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:11px 14px;border-radius:8px;font-size:14px;outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div>
+        <label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:5px;">PASSWORD</label>
+        <div style="position:relative;">
+          <input id="loginPass" type="password" placeholder="Enter password" autocomplete="off" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:11px 14px;border-radius:8px;font-size:14px;outline:none;" onkeydown="if(event.key==='Enter')doLogin()">
+          <span onclick="togglePass()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:#475569;font-size:16px;" id="eyeIcon">👁</span>
+        </div>
+      </div>
+      <div id="loginError" style="color:#f87171;font-size:13px;display:none;text-align:center;padding:8px;background:#2d1515;border-radius:6px;"></div>
+      <button onclick="doLogin()" style="background:#0ea5e9;color:white;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;" onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">Login →</button>
+    </div>
+    <div style="text-align:center;margin-top:20px;font-size:11px;color:#334155;">🔒 Protected System — Unauthorized Access Not Allowed</div>
+  </div>
+</div>
+
+<style>
+@keyframes shake {
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-10px);}
+  40%{transform:translateX(10px);}
+  60%{transform:translateX(-8px);}
+  80%{transform:translateX(8px);}
+}
+</style>
+
+<div id="mainApp">
 <!-- SIDEBAR -->
 <div class="sidebar">
   <div class="logo">🎫 <span>Rail</span>Desk</div>
@@ -139,6 +177,10 @@ canvas{max-height:300px;}
       <span id="lastSaved" style="font-size:11px;color:#475569;"></span>
       <div class="date" id="topDate"></div>
       <button class="btn btn-green" style="padding:7px 14px;font-size:12px;" onclick="exportBackup()">💾 Save to JS</button>
+      <button class="btn" style="padding:7px 14px;font-size:12px;background:#238636;color:white;" onclick="saveToGitHub()">☁ GitHub Sync</button>
+      <button class="btn" style="padding:7px 14px;font-size:12px;background:#334155;color:#94a3b8;" onclick="document.getElementById('ghModal').classList.add('open')">⚙ GH Settings</button>
+      <button class="btn btn-red" style="padding:7px 14px;font-size:12px;" onclick="logout()">🚪 Logout</button>
+      <span id="loggedUser" style="font-size:12px;color:#38bdf8;padding:6px 10px;background:#0f172a;border-radius:6px;"></span>
       <label class="btn btn-purple" style="padding:7px 14px;font-size:12px;cursor:pointer;margin:0;">
         ⬆ Import JS
         <input type="file" id="importFile" accept=".json,.js" style="display:none;" onchange="importBackup(this)">
@@ -148,10 +190,30 @@ canvas{max-height:300px;}
 
   <!-- Backup Alert -->
   <div id="backupAlert" style="display:none;background:#1e3a5f;border:1px solid #0ea5e9;border-radius:8px;padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:10px;">
-    <span style="color:#7dd3fc;font-size:13px;">⚠ Data backup nahi hua — JS file save karo!</span>
+    <span style="color:#7dd3fc;font-size:13px;">⚠ Data backup nahi hua — GitHub pe save karo!</span>
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-green" style="padding:5px 12px;font-size:12px;" onclick="exportBackup();document.getElementById('backupAlert').style.display='none';">💾 Save Now</button>
+      <button class="btn btn-green" style="padding:5px 12px;font-size:12px;" onclick="saveToGitHub();document.getElementById('backupAlert').style.display='none';">☁ Save to GitHub</button>
       <button class="btn" style="padding:5px 12px;font-size:12px;background:#334155;color:#94a3b8;" onclick="document.getElementById('backupAlert').style.display='none'">Baad mein</button>
+    </div>
+  </div>
+
+  <!-- GitHub Settings Modal -->
+  <div class="modal-overlay" id="ghModal">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header"><h3>⚙ GitHub Sync Settings</h3><button class="btn btn-red" onclick="document.getElementById('ghModal').classList.remove('open')">✕</button></div>
+      <div class="modal-body">
+        <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Apna GitHub Personal Access Token enter karo. Yeh sirf aapke browser mein save hoga.</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="form-group"><label>GitHub Username</label><input id="gh_user" class="search-bar" style="margin:0;" placeholder="biharking250" value="biharking250"></div>
+          <div class="form-group"><label>Repository Name</label><input id="gh_repo" class="search-bar" style="margin:0;" placeholder="index" value="index"></div>
+          <div class="form-group"><label>Personal Access Token (repo scope)</label><input id="gh_token" class="search-bar" style="margin:0;" type="password" placeholder="ghp_xxxxxxxxxxxx"></div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn btn-green" onclick="saveGHSettings()">💾 Save Settings</button>
+            <button class="btn btn-blue" onclick="saveToGitHub()">☁ Test & Sync Now</button>
+          </div>
+          <div id="ghStatus" style="font-size:13px;margin-top:4px;"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -338,6 +400,149 @@ canvas{max-height:300px;}
 </div>
 
 <script>
+// ---- LOGIN & SECURITY ----
+// Passwords hashed hain (SHA-256 style simple hash)
+function hashPass(str) {
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    var c = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + c;
+    hash |= 0;
+  }
+  return hash.toString(16);
+}
+
+var USERS = [
+  { username: 'admin', passHash: hashPass('admin123'), role: 'admin' },
+  { username: 'user1', passHash: hashPass('pass123'),  role: 'user' }
+];
+
+var MAX_ATTEMPTS = 5;
+var LOCKOUT_TIME = 5 * 60 * 1000; // 5 minutes
+
+function doLogin() {
+  // Lockout check
+  var lockUntil = parseInt(localStorage.getItem('rl_lock') || '0');
+  if (Date.now() < lockUntil) {
+    var remaining = Math.ceil((lockUntil - Date.now()) / 1000);
+    showLoginError('🔒 Account locked! ' + remaining + ' seconds baad try karo.');
+    return;
+  }
+
+  var u = document.getElementById('loginUser').value.trim().toLowerCase();
+  var p = document.getElementById('loginPass').value;
+
+  if (!u || !p) { showLoginError('Username aur password dono bharo!'); return; }
+
+  var found = USERS.find(function(x){ return x.username === u && x.passHash === hashPass(p); });
+
+  if (found) {
+    // Reset attempts
+    localStorage.removeItem('rl_attempts');
+    localStorage.removeItem('rl_lock');
+    // Set session with expiry (8 hours)
+    var session = { user: found.username, role: found.role, exp: Date.now() + (8 * 60 * 60 * 1000) };
+    sessionStorage.setItem('rl_session', JSON.stringify(session));
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+    // Show logged in user
+    document.getElementById('loggedUser').textContent = '👤 ' + found.username;
+    if (localStorage.getItem('gh_token')) loadFromGitHub();
+  } else {
+    // Track failed attempts
+    var attempts = parseInt(localStorage.getItem('rl_attempts') || '0') + 1;
+    localStorage.setItem('rl_attempts', attempts);
+    var remaining = MAX_ATTEMPTS - attempts;
+    if (attempts >= MAX_ATTEMPTS) {
+      localStorage.setItem('rl_lock', Date.now() + LOCKOUT_TIME);
+      localStorage.removeItem('rl_attempts');
+      showLoginError('🔒 5 baar galat! 5 minute ke liye locked.');
+    } else {
+      showLoginError('❌ Galat credentials! ' + remaining + ' attempts bache hain.');
+    }
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginPass').focus();
+    // Shake animation
+    var box = document.getElementById('loginBox');
+    box.style.animation = 'shake 0.4s';
+    setTimeout(function(){ box.style.animation = ''; }, 400);
+  }
+}
+
+function showLoginError(msg) {
+  var el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function togglePass() {
+  var inp = document.getElementById('loginPass');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  document.getElementById('eyeIcon').textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+function checkLogin() {
+  var raw = sessionStorage.getItem('rl_session');
+  if (!raw) { showLoginScreen(); return false; }
+  try {
+    var session = JSON.parse(raw);
+    if (Date.now() > session.exp) {
+      sessionStorage.removeItem('rl_session');
+      showLoginScreen();
+      return false;
+    }
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('loggedUser').textContent = '👤 ' + session.user;
+    return true;
+  } catch(e) {
+    showLoginScreen(); return false;
+  }
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  // Blur main content
+  document.getElementById('mainApp').style.filter = 'blur(8px)';
+  document.getElementById('mainApp').style.pointerEvents = 'none';
+  setTimeout(function(){
+    document.getElementById('mainApp').style.filter = '';
+    document.getElementById('mainApp').style.pointerEvents = '';
+  }, 100);
+}
+
+function logout() {
+  if (!confirm('Logout karna chahte ho?')) return;
+  sessionStorage.removeItem('rl_session');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// Auto session check every minute
+setInterval(function() {
+  var raw = sessionStorage.getItem('rl_session');
+  if (!raw) { showLoginScreen(); return; }
+  try {
+    var session = JSON.parse(raw);
+    if (Date.now() > session.exp) {
+      sessionStorage.removeItem('rl_session');
+      alert('Session expire ho gaya! Dobara login karo.');
+      showLoginScreen();
+    }
+  } catch(e) { showLoginScreen(); }
+}, 60000);
+
+// Disable right click & F12 devtools
+document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+document.addEventListener('keydown', function(e){
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key==='I'||e.key==='J'||e.key==='C')) || (e.ctrlKey && e.key==='U')) {
+    e.preventDefault();
+  }
+});
+
 // ---- DATA ----
 var customers = JSON.parse(localStorage.getItem('bs_customers')||'[]');
 var bills = JSON.parse(localStorage.getItem('bs_bills')||'[]');
@@ -730,6 +935,89 @@ function renderDashboard(){
   }).join('')||'<tr><td colspan="6" style="text-align:center;color:#475569;">No tickets yet</td></tr>';
 }
 
+// ---- GITHUB SYNC ----
+function saveGHSettings() {
+  localStorage.setItem('gh_user', document.getElementById('gh_user').value.trim());
+  localStorage.setItem('gh_repo', document.getElementById('gh_repo').value.trim());
+  localStorage.setItem('gh_token', document.getElementById('gh_token').value.trim());
+  document.getElementById('ghStatus').innerHTML = '<span style="color:#34d399;">✓ Settings saved!</span>';
+}
+
+function loadGHSettings() {
+  var u = localStorage.getItem('gh_user') || 'biharking250';
+  var r = localStorage.getItem('gh_repo') || 'index';
+  document.getElementById('gh_user').value = u;
+  document.getElementById('gh_repo').value = r;
+  // token field blank rakhte hain security ke liye
+}
+
+async function saveToGitHub() {
+  var token = localStorage.getItem('gh_token');
+  var user  = localStorage.getItem('gh_user') || 'biharking250';
+  var repo  = localStorage.getItem('gh_repo') || 'index';
+
+  if (!token) {
+    document.getElementById('ghModal').classList.add('open');
+    loadGHSettings();
+    document.getElementById('ghStatus').innerHTML = '<span style="color:#f87171;">Token enter karo pehle!</span>';
+    return;
+  }
+
+  var data = { customers: customers, bills: bills, tickets: tickets, savedOn: new Date().toISOString() };
+  var content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  var apiUrl = 'https://api.github.com/repos/' + user + '/' + repo + '/contents/data.json';
+
+  document.getElementById('ghStatus').innerHTML = '<span style="color:#7dd3fc;">Saving...</span>';
+
+  try {
+    // Check if file exists (get SHA)
+    var sha = null;
+    var check = await fetch(apiUrl, { headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' } });
+    if (check.ok) { var existing = await check.json(); sha = existing.sha; }
+
+    var body = { message: 'RailDesk data update - ' + new Date().toLocaleString(), content: content };
+    if (sha) body.sha = sha;
+
+    var res = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      document.getElementById('ghStatus').innerHTML = '<span style="color:#34d399;">✓ GitHub pe save ho gaya! ' + new Date().toLocaleTimeString() + '</span>';
+      document.getElementById('lastSaved').textContent = '☁ Synced: ' + new Date().toLocaleTimeString();
+      localStorage.setItem('bs_last_backup', Date.now());
+    } else {
+      var err = await res.json();
+      document.getElementById('ghStatus').innerHTML = '<span style="color:#f87171;">Error: ' + (err.message||'Failed') + '</span>';
+    }
+  } catch(e) {
+    document.getElementById('ghStatus').innerHTML = '<span style="color:#f87171;">Network error: ' + e.message + '</span>';
+  }
+}
+
+async function loadFromGitHub() {
+  var token = localStorage.getItem('gh_token');
+  var user  = localStorage.getItem('gh_user') || 'biharking250';
+  var repo  = localStorage.getItem('gh_repo') || 'index';
+  if (!token) return;
+
+  try {
+    var res = await fetch('https://api.github.com/repos/' + user + '/' + repo + '/contents/data.json', {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) return;
+    var file = await res.json();
+    var data = JSON.parse(decodeURIComponent(escape(atob(file.content))));
+    if (data.customers) { customers = data.customers; localStorage.setItem('bs_customers', JSON.stringify(customers)); }
+    if (data.bills)     { bills = data.bills;         localStorage.setItem('bs_bills', JSON.stringify(bills)); }
+    if (data.tickets)   { tickets = data.tickets;     localStorage.setItem('bs_tickets', JSON.stringify(tickets)); }
+    renderDashboard();
+    document.getElementById('lastSaved').textContent = '☁ Loaded from GitHub: ' + new Date().toLocaleTimeString();
+  } catch(e) { console.log('GitHub load error:', e); }
+}
+
 // ---- BACKUP / IMPORT ----
 function exportBackup() {
   var data = {
@@ -796,7 +1084,11 @@ function importBackup(input) {
 }
 
 // ---- INIT ----
+checkLogin();
 renderDashboard();
+// GitHub se data load karo agar token set hai
+if (localStorage.getItem('gh_token')) { loadFromGitHub(); }
 </script>
+</div><!-- end mainApp -->
 </body>
 </html>
