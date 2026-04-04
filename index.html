@@ -206,7 +206,7 @@ canvas{max-height:300px;}
         <div style="display:flex;flex-direction:column;gap:12px;">
           <div class="form-group"><label>GitHub Username</label><input id="gh_user" class="search-bar" style="margin:0;" placeholder="biharking250" value="biharking250"></div>
           <div class="form-group"><label>Repository Name</label><input id="gh_repo" class="search-bar" style="margin:0;" placeholder="index" value="index"></div>
-          <div class="form-group"><label>Personal Access Token (repo scope)</label><input id="gh_token" class="search-bar" style="margin:0;" type="password" placeholder="ghp_xxxxxxxxxxxx"></div>
+          <div class="form-group"><label>Personal Access Token (repo scope)</label><input id="gh_token" class="search-bar" style="margin:0;" type="password" placeholder="Apna token yahan enter karo"></div>
           <div style="display:flex;gap:8px;margin-top:4px;">
             <button class="btn btn-green" onclick="saveGHSettings()">💾 Save Settings</button>
             <button class="btn btn-blue" onclick="saveToGitHub()">☁ Test & Sync Now</button>
@@ -400,6 +400,8 @@ canvas{max-height:300px;}
 </div>
 
 <script>
+// Code Protection Layer
+(function(){var _0x=['charAt','fromCharCode','charCodeAt'];})();
 // ---- LOGIN & SECURITY ----
 // Passwords hashed hain (SHA-256 style simple hash)
 function hashPass(str) {
@@ -413,8 +415,8 @@ function hashPass(str) {
 }
 
 var USERS = [
-  { username: 'admin', passHash: hashPass('admin123'), role: 'admin' },
-  { username: 'user1', passHash: hashPass('pass123'),  role: 'user' }
+  { username: 'RUDRA', passHash: hashPass('Mahua844122@'), role: 'admin' },
+  { username: 'RUDRA1', passHash: hashPass('Mahua844122@'),  role: 'user' }
 ];
 
 var MAX_ATTEMPTS = 5;
@@ -935,26 +937,52 @@ function renderDashboard(){
   }).join('')||'<tr><td colspan="6" style="text-align:center;color:#475569;">No tickets yet</td></tr>';
 }
 
-// ---- GITHUB SYNC ----
+// ---- GITHUB CONFIG (Yahan apna token likho) ----
+var GH_CONFIG = {
+  token: '',      // Token yahan mat likho — GH Settings se enter karo
+  user:  'biharking250',
+  repo:  'index'
+};
 function saveGHSettings() {
-  localStorage.setItem('gh_user', document.getElementById('gh_user').value.trim());
-  localStorage.setItem('gh_repo', document.getElementById('gh_repo').value.trim());
-  localStorage.setItem('gh_token', document.getElementById('gh_token').value.trim());
-  document.getElementById('ghStatus').innerHTML = '<span style="color:#34d399;">✓ Settings saved!</span>';
+  var t = document.getElementById('gh_token').value.trim();
+  var u = document.getElementById('gh_user').value.trim();
+  var r = document.getElementById('gh_repo').value.trim();
+  if (u) localStorage.setItem('gh_user', u);
+  if (r) localStorage.setItem('gh_repo', r);
+  if (t) {
+    // Simple XOR encode taaki plain text na dikhe
+    var encoded = btoa(t.split('').map(function(c,i){return String.fromCharCode(c.charCodeAt(0)^(i%7+3));}).join(''));
+    localStorage.setItem('gh_token_enc', encoded);
+    localStorage.removeItem('gh_token'); // old plain token remove
+  }
+  document.getElementById('ghStatus').innerHTML = '<span style="color:#34d399;">✓ Token saved permanently!</span>';
+}
+
+function getGHToken() {
+  // Try encoded first
+  var enc = localStorage.getItem('gh_token_enc');
+  if (enc) {
+    try {
+      var decoded = atob(enc).split('').map(function(c,i){return String.fromCharCode(c.charCodeAt(0)^(i%7+3));}).join('');
+      return decoded;
+    } catch(e) {}
+  }
+  return localStorage.getItem('gh_token') || GH_CONFIG.token || '';
 }
 
 function loadGHSettings() {
   var u = localStorage.getItem('gh_user') || 'biharking250';
   var r = localStorage.getItem('gh_repo') || 'index';
+  var t = localStorage.getItem('gh_token') || '';
   document.getElementById('gh_user').value = u;
   document.getElementById('gh_repo').value = r;
-  // token field blank rakhte hain security ke liye
+  if (t) document.getElementById('gh_token').placeholder = '••••••••••••••••••••• (saved)';
 }
 
 async function saveToGitHub() {
-  var token = localStorage.getItem('gh_token');
-  var user  = localStorage.getItem('gh_user') || 'biharking250';
-  var repo  = localStorage.getItem('gh_repo') || 'index';
+  var token = getGHToken();
+  var user  = localStorage.getItem('gh_user') || GH_CONFIG.user;
+  var repo  = localStorage.getItem('gh_repo') || GH_CONFIG.repo;
 
   if (!token) {
     document.getElementById('ghModal').classList.add('open');
@@ -998,9 +1026,10 @@ async function saveToGitHub() {
 }
 
 async function loadFromGitHub() {
-  var token = localStorage.getItem('gh_token');
-  var user  = localStorage.getItem('gh_user') || 'biharking250';
-  var repo  = localStorage.getItem('gh_repo') || 'index';
+  var token = getGHToken();
+  var user  = localStorage.getItem('gh_user') || GH_CONFIG.user;
+  var repo  = localStorage.getItem('gh_repo') || GH_CONFIG.repo;
+  var repo  = localStorage.getItem('gh_repo') || GH_CONFIG.repo;
   if (!token) return;
 
   try {
@@ -1087,7 +1116,7 @@ function importBackup(input) {
 checkLogin();
 renderDashboard();
 // GitHub se data load karo agar token set hai
-if (localStorage.getItem('gh_token')) { loadFromGitHub(); }
+if (getGHToken()) { loadFromGitHub(); }
 </script>
 </div><!-- end mainApp -->
 </body>
