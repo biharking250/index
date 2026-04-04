@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billing & Ticket Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;}
+.sidebar{position:fixed;top:0;left:0;width:220px;height:100vh;background:#1e293b;display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 20px rgba(0,0,0,0.3);}
+.logo{padding:24px 20px;font-size:20px;font-weight:700;color:#38bdf8;border-bottom:1px solid #334155;letter-spacing:1px;}
+.logo span{color:#f472b6;}
+.nav-item{display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;font-size:14px;color:#94a3b8;transition:all 0.2s;border-left:3px solid transparent;}
+.nav-item:hover,.nav-item.active{background:#0f172a;color:#38bdf8;border-left-color:#38bdf8;}
+.nav-item .icon{font-size:18px;width:22px;text-align:center;}
+.main{margin-left:220px;padding:24px;min-height:100vh;}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+.topbar h1{font-size:22px;font-weight:700;color:#f1f5f9;}
+.topbar .date{font-size:13px;color:#64748b;}
+.section{display:none;}.section.active{display:block;}
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px;}
+.stat-card{background:#1e293b;border-radius:12px;padding:20px;position:relative;overflow:hidden;border:1px solid #334155;}
+.stat-card::before{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:0.15;}
+.stat-card.blue::before{background:#38bdf8;}
+.stat-card.purple::before{background:#a78bfa;}
+.stat-card.green::before{background:#34d399;}
+.stat-card.red::before{background:#f87171;}
+.stat-card.orange::before{background:#fb923c;}
+.stat-card.pink::before{background:#f472b6;}
+.stat-card .lbl{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.stat-card .val{font-size:28px;font-weight:700;}
+.stat-card.blue .val{color:#38bdf8;}
+.stat-card.purple .val{color:#a78bfa;}
+.stat-card.green .val{color:#34d399;}
+.stat-card.red .val{color:#f87171;}
+.stat-card.orange .val{color:#fb923c;}
+.stat-card.pink .val{color:#f472b6;}
+.stat-card .sub{font-size:12px;color:#475569;margin-top:6px;}
+/* CARDS */
+.card{background:#1e293b;border-radius:12px;padding:20px;margin-bottom:20px;border:1px solid #334155;}
+.card h2{font-size:16px;font-weight:600;color:#f1f5f9;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:#0f172a;color:#64748b;padding:10px 12px;text-align:left;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;}
+td{padding:10px 12px;border-bottom:1px solid #1e293b;color:#cbd5e1;}
+tr:hover td{background:#0f172a;}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-pending{background:#312e81;color:#a5b4fc;}
+.badge-complete{background:#064e3b;color:#6ee7b7;}
+.badge-cancel{background:#7f1d1d;color:#fca5a5;}
+.badge-incomplete{background:#78350f;color:#fcd34d;}
+/* BUTTONS */
+.btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:opacity 0.2s;}
+.btn:hover{opacity:0.8;}
+.btn-blue{background:#0ea5e9;color:white;}
+.btn-green{background:#10b981;color:white;}
+.btn-red{background:#ef4444;color:white;}
+.btn-orange{background:#f97316;color:white;}
+.btn-purple{background:#8b5cf6;color:white;}
+/* FORM */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group label{font-size:12px;color:#64748b;font-weight:600;}
+.form-group input,.form-group select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;}
+.form-group input:focus,.form-group select:focus{border-color:#38bdf8;}
+/* TICKET FORM */
+.tk-dark{background:#0a1628;border-radius:10px;padding:20px;border:1px solid #1e3a5f;}
+.tk-label{color:#38bdf8;font-size:12px;font-weight:600;}
+.tk-inp{background:#0f2744;border:1px solid #1e4976;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px;outline:none;width:100%;}
+.tk-inp:focus{border-color:#38bdf8;}
+.tk-sel{background:#0f2744;border:1px solid #1e4976;color:#e2e8f0;padding:7px 8px;border-radius:6px;font-size:13px;outline:none;cursor:pointer;}
+.tk-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;}
+.tk-row .fg{display:flex;flex-direction:column;gap:4px;}
+.tk-passenger-table{width:100%;border-collapse:collapse;margin:10px 0;}
+.tk-passenger-table th{background:#0a1628;color:#38bdf8;padding:8px 10px;font-size:12px;border:1px solid #1e3a5f;}
+.tk-passenger-table td{padding:6px;border:1px solid #1e3a5f;}
+.tk-passenger-table input,.tk-passenger-table select{background:#0f2744;border:1px solid #1e4976;color:#e2e8f0;padding:5px 6px;border-radius:4px;font-size:12px;width:100%;outline:none;}
+/* SEARCH */
+.search-bar{background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 14px;border-radius:8px;font-size:13px;width:100%;margin-bottom:14px;outline:none;}
+.search-bar:focus{border-color:#38bdf8;}
+/* BILL TABLE */
+.bill-grid{border:1px solid #334155;border-radius:8px;overflow:visible;}
+.bill-header{display:grid;grid-template-columns:2fr 2fr 1.5fr 1.3fr 50px 1.1fr 1.1fr 1.1fr 50px;background:#0f172a;}
+.bill-header div{padding:10px 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #1e293b;}
+.bill-row{display:grid;grid-template-columns:2fr 2fr 1.5fr 1.3fr 50px 1.1fr 1.1fr 1.1fr 50px;border-top:1px solid #1e293b;background:#1e293b;}
+.bill-row:hover{background:#243447;}
+.bill-row>div{border-right:1px solid #0f172a;display:flex;align-items:center;}
+.bill-row input,.bill-row select{width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:200;justify-content:center;align-items:flex-start;padding:20px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:#1e293b;border-radius:12px;width:100%;max-width:700px;overflow:hidden;border:1px solid #334155;}
+.modal-header{background:#0f172a;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+.modal-header h3{color:#f1f5f9;font-size:15px;}
+.modal-body{padding:24px;}
+/* TABS */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;}
+.tab{padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#1e293b;color:#64748b;border:1px solid #334155;transition:all 0.2s;}
+.tab.active{background:#0ea5e9;color:white;border-color:#0ea5e9;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+/* IRCTC station */
+.st-wrap{position:relative;width:100%;}
+.st-list{display:none;position:absolute;top:100%;left:0;width:260px;max-height:200px;overflow-y:auto;background:#1e293b;border:1px solid #334155;border-radius:6px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.st-list.open{display:block;}
+.st-list div{padding:8px 12px;font-size:13px;cursor:pointer;color:#e2e8f0;background:#1e293b;}
+.st-list div:hover{background:#0ea5e9;color:white;}
+/* Fix select option colors */
+select option{background:#1e293b;color:#e2e8f0;}
+.bill-row select option{background:#1e293b;color:#e2e8f0;}
+.tk-sel option{background:#0f2744;color:#e2e8f0;}
+/* BILL TOTAL */
+.bill-total{background:#0f172a;border-radius:8px;padding:16px;margin-top:12px;}
+.bill-total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:14px;color:#94a3b8;}
+.bill-total-row.grand{font-weight:700;font-size:17px;color:#f1f5f9;border-top:1px solid #334155;margin-top:6px;padding-top:10px;}
+/* CHART */
+canvas{max-height:300px;}
+@media(max-width:768px){.sidebar{width:60px;}.sidebar .nav-item span{display:none;}.logo{font-size:0;padding:20px 16px;}.logo::after{content:'B';font-size:20px;color:#38bdf8;}.main{margin-left:60px;}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">🎫 <span>Rail</span>Desk</div>
+  <div class="nav-item active" onclick="showSection('dashboard',this)"><span class="icon">📊</span><span>Dashboard</span></div>
+  <div class="nav-item" onclick="showSection('tickets',this)"><span class="icon">🎫</span><span>Tickets</span></div>
+  <div class="nav-item" onclick="showSection('customers',this)"><span class="icon">👥</span><span>Customers</span></div>
+  <div class="nav-item" onclick="showSection('billing',this)"><span class="icon">🧾</span><span>New Bill</span></div>
+  <div class="nav-item" onclick="showSection('bills',this)"><span class="icon">📋</span><span>All Bills</span></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <h1 id="pageTitle">Dashboard</h1>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span id="lastSaved" style="font-size:11px;color:#475569;"></span>
+      <div class="date" id="topDate"></div>
+      <button class="btn btn-green" style="padding:7px 14px;font-size:12px;" onclick="exportBackup()">💾 Save to JS</button>
+      <label class="btn btn-purple" style="padding:7px 14px;font-size:12px;cursor:pointer;margin:0;">
+        ⬆ Import JS
+        <input type="file" id="importFile" accept=".json,.js" style="display:none;" onchange="importBackup(this)">
+      </label>
+    </div>
+  </div>
+
+  <!-- Backup Alert -->
+  <div id="backupAlert" style="display:none;background:#1e3a5f;border:1px solid #0ea5e9;border-radius:8px;padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:10px;">
+    <span style="color:#7dd3fc;font-size:13px;">⚠ Data backup nahi hua — JS file save karo!</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green" style="padding:5px 12px;font-size:12px;" onclick="exportBackup();document.getElementById('backupAlert').style.display='none';">💾 Save Now</button>
+      <button class="btn" style="padding:5px 12px;font-size:12px;background:#334155;color:#94a3b8;" onclick="document.getElementById('backupAlert').style.display='none'">Baad mein</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="section active">
+    <div class="stats" id="statsGrid"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="card">
+        <h2>📊 Due Amount by Customer</h2>
+        <canvas id="dueChart"></canvas>
+      </div>
+      <div class="card">
+        <h2>🎫 Ticket Status</h2>
+        <canvas id="tkChart"></canvas>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h2>🕐 Recent Tickets</h2>
+      <table><thead><tr><th>#</th><th>Name</th><th>From</th><th>To</th><th>Date</th><th>Status</th></tr></thead>
+      <tbody id="recentTickets"></tbody></table>
+    </div>
+  </div>
+
+  <!-- TICKETS -->
+  <div id="tickets" class="section">
+    <div class="tabs">
+      <button class="tab active" onclick="showTkTab('tkNew',this)">🎫 New Ticket</button>
+      <button class="tab" onclick="showTkTab('tkPending',this)">🕐 Pending</button>
+      <button class="tab" onclick="showTkTab('tkHistory',this)">📋 History</button>
+      <button class="tab" onclick="showTkTab('tkIncomplete',this)">⏳ Incomplete</button>
+      <button class="tab" onclick="showTkTab('tkComplete',this)">✅ Complete</button>
+      <button class="tab" onclick="showTkTab('tkCancel',this)">❌ Cancelled</button>
+    </div>
+
+    <div id="tkNew" class="tab-panel active">
+      <div class="tk-dark">
+        <div style="color:#38bdf8;font-size:16px;font-weight:700;margin-bottom:16px;letter-spacing:1px;">🎫 NEW TICKET</div>
+        <div class="tk-row">
+          <div class="fg"><label class="tk-label">Source</label>
+            <div class="st-wrap" style="width:200px;"><input class="tk-inp" id="tk_src" placeholder="From Station" autocomplete="off" oninput="filterStation('tk_src')" onfocus="openDrop('tk_src')"><div id="tk_src_list" class="st-list"></div></div>
+          </div>
+          <div class="fg"><label class="tk-label">Destination</label>
+            <div class="st-wrap" style="width:200px;"><input class="tk-inp" id="tk_dst" placeholder="To Station" autocomplete="off" oninput="filterStation('tk_dst')" onfocus="openDrop('tk_dst')"><div id="tk_dst_list" class="st-list"></div></div>
+          </div>
+          <div class="fg"><label class="tk-label">Date</label><input class="tk-inp" type="date" id="tk_date" style="width:150px;"></div>
+          <div class="fg"><label class="tk-label">Train No.</label><input class="tk-inp" id="tk_train" placeholder="Train No." style="width:130px;"></div>
+          <div class="fg"><label class="tk-label">Class</label>
+            <select class="tk-sel" id="tk_class"><option>SL</option><option>3A</option><option>2A</option><option>1A</option><option>CC</option><option>EC</option><option>2S</option></select>
+          </div>
+          <div class="fg"><label class="tk-label">Quota</label>
+            <select class="tk-sel" id="tk_quota"><option>GN</option><option>TQ</option><option>PT</option><option>LD</option></select>
+          </div>
+          <div class="fg"><label class="tk-label">Mobile</label><input class="tk-inp" id="tk_mob" placeholder="Mobile" style="width:140px;"></div>
+        </div>
+        <table class="tk-passenger-table">
+          <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Gender</th><th></th></tr></thead>
+          <tbody id="tk_passengers"></tbody>
+        </table>
+        <button class="btn btn-blue" style="margin-bottom:14px;font-size:12px;" onclick="addPassenger()">+ Add Passenger</button>
+        <div class="tk-row">
+          <div class="fg"><label class="tk-label">Ticket Name</label><input class="tk-inp" id="tk_name" placeholder="Label" list="tk_name_list" style="width:180px;"><datalist id="tk_name_list"></datalist></div>
+          <div class="fg"><label class="tk-label">Customer Price</label><input class="tk-inp" type="number" id="tk_cust_price" placeholder="0" style="width:130px;" oninput="calcTkDue()"></div>
+          <div class="fg"><label class="tk-label">Advance Price</label><input class="tk-inp" type="number" id="tk_adv_price" placeholder="0" style="width:130px;" oninput="calcTkDue()"></div>
+          <div class="fg"><label class="tk-label" style="color:#f87171;">Due Price</label><input class="tk-inp" type="number" id="tk_due_price" placeholder="0" style="width:130px;color:#f87171;" readonly></div>
+          <div class="fg" style="justify-content:flex-end;"><button class="btn btn-green" style="padding:9px 22px;font-size:13px;" onclick="saveTicket()">💾 Save Ticket</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tkPending" class="tab-panel">
+      <div class="card"><h2>🕐 Pending Booking</h2>
+        <table><thead><tr><th>#</th><th>Name</th><th>From</th><th>To</th><th>Date</th><th>Train</th><th>Class</th><th>Passengers</th><th>Cust.Price</th><th>Advance</th><th>Due</th><th>Action</th></tr></thead>
+        <tbody id="tkPendingTable"></tbody></table></div>
+    </div>
+    <div id="tkHistory" class="tab-panel">
+      <div class="card"><h2>📋 Ticket History</h2>
+        <input class="search-bar" placeholder="Search..." oninput="renderTk('all',this.value)">
+        <table><thead><tr><th>#</th><th>Name</th><th>From</th><th>To</th><th>Date</th><th>Train</th><th>Class</th><th>Passengers</th><th>Cust.Price</th><th>Advance</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="tkHistoryTable"></tbody></table></div>
+    </div>
+    <div id="tkIncomplete" class="tab-panel">
+      <div class="card"><h2>⏳ Incomplete Booking</h2>
+        <table><thead><tr><th>#</th><th>Name</th><th>From</th><th>To</th><th>Date</th><th>Train</th><th>Class</th><th>Cust.Price</th><th>Advance</th><th>Due</th><th>Action</th></tr></thead>
+        <tbody id="tkIncompleteTable"></tbody></table></div>
+    </div>
+    <div id="tkComplete" class="tab-panel">
+      <div class="card"><h2>✅ Complete Booking</h2>
+        <table><thead><tr><th>#</th><th>Name</th><th>From</th><th>To</th><th>Date</th><th>Train</th><th>Class</th><th>Passengers</th><th>Cust.Price</th><th>Advance</th><th>Due</th><th>Action</th></tr></thead>
+        <tbody id="tkCompleteTable"></tbody></table></div>
+    </div>
+    <div id="tkCancel" class="tab-panel">
+      <div class="card"><h2>❌ Cancelled Booking</h2>
+        <table><thead><tr><th>#</th><th>Name</th><th>From</th><th>To</th><th>Date</th><th>Train</th><th>Class</th><th>Cancelled On</th><th>Cust.Price</th><th>Advance</th><th>Due</th><th>Action</th></tr></thead>
+        <tbody id="tkCancelTable"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- CUSTOMERS -->
+  <div id="customers" class="section">
+    <div class="card">
+      <h2>➕ New Customer</h2>
+      <div class="form-grid">
+        <div class="form-group"><label>Name *</label><input id="custName" placeholder="Customer Name"></div>
+        <div class="form-group"><label>Phone</label><input id="custPhone" placeholder="Phone Number"></div>
+        <div class="form-group"><label>Address</label><input id="custAddress" placeholder="Address"></div>
+        <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-green" style="margin-top:20px;" onclick="addCustomer()">Add Customer</button></div>
+      </div>
+    </div>
+    <div class="card"><h2>👥 Customer List</h2>
+      <input class="search-bar" placeholder="Search customer..." oninput="renderCustomers(this.value)">
+      <table><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Address</th><th>Bills</th><th>Due</th><th>Action</th></tr></thead>
+      <tbody id="customerTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- BILLING -->
+  <div id="billing" class="section">
+    <div class="card">
+      <h2>🧾 New Bill</h2>
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <select id="billCustomer" style="flex:1;min-width:200px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;">
+          <option value="">-- Select Customer --</option>
+        </select>
+        <input type="date" id="billDate" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;">
+      </div>
+      <div class="bill-grid" id="billTable">
+        <div class="bill-header">
+          <div>From</div><div>To</div><div>Class</div><div>Date</div>
+          <div style="text-align:center;">Qty</div><div>Price</div><div>Extra</div><div>Total</div><div></div>
+        </div>
+        <div id="billItems"></div>
+      </div>
+      <button class="btn btn-blue" style="margin-top:10px;margin-bottom:14px;" onclick="addBillItem()">+ Add Row</button>
+      <div class="bill-total">
+        <div class="bill-total-row"><span>Subtotal</span><span id="subtotalDisplay">Rs.0</span></div>
+        <div class="bill-total-row"><span>Discount</span><span><input type="number" id="discountAmt" placeholder="0" style="width:100px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:13px;outline:none;" oninput="calcTotal()"></span></div>
+        <div class="bill-total-row grand"><span>Grand Total</span><span id="grandTotalDisplay">Rs.0</span></div>
+        <div class="bill-total-row"><span>Amount Paid</span><span><input type="number" id="amountPaid" placeholder="0" style="width:120px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:13px;outline:none;" oninput="calcTotal()"></span></div>
+        <div class="bill-total-row" style="color:#f87171;font-weight:700;"><span>Due Amount</span><span id="dueDisplay">Rs.0</span></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-green" onclick="saveBill()">💾 Save Bill</button>
+        <button class="btn btn-red" onclick="clearBill()">🗑 Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL BILLS -->
+  <div id="bills" class="section">
+    <div class="card"><h2>📋 All Bills</h2>
+      <input class="search-bar" placeholder="Search by customer..." oninput="renderBills(this.value)">
+      <table><thead><tr><th>#</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="billsTable"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Bill Modal -->
+<div class="modal-overlay" id="billModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>🧾 Bill Detail</h3>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-blue" onclick="printBill()">🖨 Print</button>
+        <button class="btn btn-red" onclick="closeModal()">✕ Close</button>
+      </div>
+    </div>
+    <div class="modal-body" id="printBillArea"><div id="modalContent"></div></div>
+  </div>
+</div>
+
+<!-- Pay Modal -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal">
+    <div class="modal-header"><h3>💰 Receive Payment</h3><button class="btn btn-red" onclick="closePayModal()">✕</button></div>
+    <div class="modal-body">
+      <div id="payModalContent" style="margin-bottom:12px;"></div>
+      <div style="display:flex;gap:10px;">
+        <input type="number" id="payAmount" placeholder="Amount" style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;">
+        <button class="btn btn-green" onclick="receivePayment()">Receive</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- DATA ----
+var customers = JSON.parse(localStorage.getItem('bs_customers')||'[]');
+var bills = JSON.parse(localStorage.getItem('bs_bills')||'[]');
+var tickets = JSON.parse(localStorage.getItem('bs_tickets')||'[]');
+var currentPayBillId = null;
+var editingTicketId = null;
+var billItemCount = 0;
+
+function saveData(){
+  localStorage.setItem('bs_customers',JSON.stringify(customers));
+  localStorage.setItem('bs_bills',JSON.stringify(bills));
+  localStorage.setItem('bs_last_change', Date.now());
+}
+function saveTk(){
+  localStorage.setItem('bs_tickets',JSON.stringify(tickets));
+  localStorage.setItem('bs_last_change', Date.now());
+}
+
+// ---- NAV ----
+var titles = {dashboard:'Dashboard',tickets:'Tickets',customers:'Customers',billing:'New Bill',bills:'All Bills'};
+function showSection(id,el){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  if(el) el.classList.add('active');
+  document.getElementById('pageTitle').textContent = titles[id]||id;
+  if(id==='dashboard') renderDashboard();
+  if(id==='customers') renderCustomers();
+  if(id==='billing'){populateCustomerDropdown();initBill();}
+  if(id==='bills') renderBills();
+  if(id==='tickets') initTicketForm();
+}
+
+// Date
+document.getElementById('topDate').textContent = new Date().toDateString();
+
+// ---- CUSTOMERS ----
+function addCustomer(){
+  var name=document.getElementById('custName').value.trim();
+  if(!name){alert('Name required!');return;}
+  customers.push({id:Date.now(),name:name,phone:document.getElementById('custPhone').value.trim(),address:document.getElementById('custAddress').value.trim()});
+  saveData();
+  ['custName','custPhone','custAddress'].forEach(function(i){document.getElementById(i).value='';});
+  renderCustomers();
+}
+function deleteCustomer(id){
+  if(!confirm('Delete customer?')) return;
+  customers=customers.filter(function(c){return c.id!==id;});
+  bills=bills.filter(function(b){return b.customerId!==id;});
+  saveData(); renderCustomers();
+}
+function renderCustomers(search){
+  search=search||'';
+  var tbody=document.getElementById('customerTable');
+  var list=customers.filter(function(c){return c.name.toLowerCase().indexOf(search.toLowerCase())>=0;});
+  tbody.innerHTML=list.map(function(c,i){
+    var cb=bills.filter(function(b){return b.customerId===c.id;});
+    var due=cb.reduce(function(s,b){return s+b.due;},0);
+    return '<tr><td>'+(i+1)+'</td><td>'+c.name+'</td><td>'+(c.phone||'-')+'</td><td>'+(c.address||'-')+'</td><td>'+cb.length+'</td><td style="color:'+(due>0?'#f87171':'#34d399')+';">Rs.'+due.toFixed(2)+'</td><td><button class="btn btn-red" style="padding:4px 10px;" onclick="deleteCustomer('+c.id+')">Del</button></td></tr>';
+  }).join('')||'<tr><td colspan="7" style="text-align:center;color:#475569;">No customers</td></tr>';
+}
+
+// ---- BILLING ----
+function populateCustomerDropdown(){
+  var sel=document.getElementById('billCustomer');
+  sel.innerHTML='<option value="">-- Select Customer --</option>'+customers.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
+}
+function initBill(){
+  document.getElementById('billDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('billItems').innerHTML='';
+  document.getElementById('discountAmt').value='';
+  document.getElementById('amountPaid').value='';
+  billItemCount=0; calcTotal(); addBillItem();
+}
+function addBillItem(){
+  billItemCount++;
+  var id='item_'+billItemCount;
+  var today=new Date().toISOString().split('T')[0];
+  var cls=['All Classes','Anubhuti (EA)','AC First (1A)','Vistadome AC (EV)','Exec. Chair (EC)','AC 2 Tier (2A)','First Class (FC)','AC 3 Tier (3A)','AC 3 Eco (3E)','AC Chair (CC)','Sleeper (SL)','Second Sitting (2S)'];
+  var row=document.createElement('div');
+  row.id=id; row.className='bill-row bill-item-row';
+  row.innerHTML=
+    '<div><div class="st-wrap" style="width:100%;">'+stationInput(id+'_from','From')+'</div></div>'+
+    '<div><div class="st-wrap" style="width:100%;">'+stationInput(id+'_to','To')+'</div></div>'+
+    '<div><select class="item-class" oninput="calcTotal()" style="width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;cursor:pointer;">'+cls.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
+    '<div><input type="date" class="item-date" value="'+today+'" oninput="calcTotal()"></div>'+
+    '<div style="justify-content:center;"><input type="number" class="item-qty" value="1" min="1" oninput="calcTotal()" style="text-align:center;width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 4px;font-size:13px;"></div>'+
+    '<div><input type="number" placeholder="0" class="item-price" oninput="calcTotal()"></div>'+
+    '<div><input type="number" placeholder="0" class="item-extra" oninput="calcTotal()"></div>'+
+    '<div style="padding:8px;font-weight:700;color:#38bdf8;font-size:13px;" class="item-total">Rs.0</div>'+
+    '<div style="justify-content:center;padding:4px;"><button class="btn btn-red" style="padding:4px 8px;font-size:12px;" onclick="removeBillItem(\''+id+'\')">✕</button></div>';
+  document.getElementById('billItems').appendChild(row);
+  initStationDrop(id+'_from'); initStationDrop(id+'_to');
+}
+function removeBillItem(id){var el=document.getElementById(id);if(el)el.remove();calcTotal();}
+function calcTotal(){
+  var sub=0;
+  document.querySelectorAll('.bill-item-row').forEach(function(row){
+    var qty=parseFloat(row.querySelector('.item-qty').value)||0;
+    var price=parseFloat(row.querySelector('.item-price').value)||0;
+    var extra=parseFloat(row.querySelector('.item-extra').value)||0;
+    var total=(qty*price)+extra;
+    row.querySelector('.item-total').textContent='Rs.'+total.toFixed(2);
+    sub+=total;
+  });
+  var disc=parseFloat(document.getElementById('discountAmt').value)||0;
+  var grand=sub-disc;
+  var paid=parseFloat(document.getElementById('amountPaid').value)||0;
+  var due=grand-paid;
+  document.getElementById('subtotalDisplay').textContent='Rs.'+sub.toFixed(2);
+  document.getElementById('grandTotalDisplay').textContent='Rs.'+(grand<0?0:grand).toFixed(2);
+  document.getElementById('dueDisplay').textContent='Rs.'+(due<0?0:due).toFixed(2);
+}
+function saveBill(){
+  var custId=parseInt(document.getElementById('billCustomer').value);
+  if(!custId){alert('Select customer!');return;}
+  var items=[];
+  document.querySelectorAll('.bill-item-row').forEach(function(row){
+    var from=row.querySelector('.item-from')?row.querySelector('.item-from').value.trim():'';
+    var to=row.querySelector('.item-to')?row.querySelector('.item-to').value.trim():'';
+    var cls=row.querySelector('.item-class')?row.querySelector('.item-class').value:'';
+    var date=row.querySelector('.item-date').value;
+    var qty=parseFloat(row.querySelector('.item-qty').value)||0;
+    var price=parseFloat(row.querySelector('.item-price').value)||0;
+    var extra=parseFloat(row.querySelector('.item-extra').value)||0;
+    var total=(qty*price)+extra;
+    if(from||to||price>0) items.push({from:from,to:to,cls:cls,date:date,qty:qty,price:price,extra:extra,total:total});
+  });
+  if(items.length===0){alert('Add at least one row!');return;}
+  var disc=parseFloat(document.getElementById('discountAmt').value)||0;
+  var sub=items.reduce(function(s,i){return s+i.total;},0);
+  var grand=Math.max(0,sub-disc);
+  var paid=parseFloat(document.getElementById('amountPaid').value)||0;
+  var due=Math.max(0,grand-paid);
+  bills.push({id:Date.now(),customerId:custId,date:document.getElementById('billDate').value,items:items,discount:disc,subtotal:sub,grand:grand,paid:paid,due:due,payments:paid>0?[{date:document.getElementById('billDate').value,amount:paid}]:[]});
+  saveData(); alert('Bill saved!'); clearBill();
+}
+function clearBill(){initBill();}
+function renderBills(search){
+  search=search||'';
+  var tbody=document.getElementById('billsTable');
+  var list=bills.filter(function(b){var c=customers.find(function(x){return x.id===b.customerId;});return c&&c.name.toLowerCase().indexOf(search.toLowerCase())>=0;}).sort(function(a,b){return b.id-a.id;});
+  tbody.innerHTML=list.map(function(b,i){
+    var c=customers.find(function(x){return x.id===b.customerId;});
+    return '<tr><td>'+(i+1)+'</td><td>'+b.date+'</td><td>'+(c?c.name:'?')+'</td><td>Rs.'+b.grand.toFixed(2)+'</td><td>Rs.'+b.paid.toFixed(2)+'</td><td style="color:'+(b.due>0?'#f87171':'#34d399')+';">Rs.'+b.due.toFixed(2)+'</td><td><span class="badge '+(b.due>0?'badge-incomplete':'badge-complete')+'">'+(b.due>0?'Due':'Paid')+'</span></td><td style="display:flex;gap:4px;"><button class="btn btn-blue" style="padding:4px 8px;" onclick="viewBill('+b.id+')">View</button>'+(b.due>0?'<button class="btn btn-orange" style="padding:4px 8px;" onclick="openPayModal('+b.id+')">Pay</button>':'')+'<button class="btn btn-red" style="padding:4px 8px;" onclick="deleteBill('+b.id+')">Del</button></td></tr>';
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:#475569;">No bills</td></tr>';
+}
+function deleteBill(id){if(!confirm('Delete bill?'))return;bills=bills.filter(function(b){return b.id!==id;});saveData();renderBills();}
+function viewBill(id){
+  var b=bills.find(function(x){return x.id===id;});
+  var c=customers.find(function(x){return x.id===b.customerId;});
+  document.getElementById('modalContent').innerHTML='<p style="color:#94a3b8;margin-bottom:12px;"><strong style="color:#f1f5f9;">'+(c?c.name:'?')+'</strong> &nbsp;|&nbsp; '+b.date+'</p>'+
+    '<div style="overflow-x:auto;"><table><thead><tr><th>#</th><th>From</th><th>To</th><th>Class</th><th>Date</th><th>Qty</th><th>Price</th><th>Extra</th><th>Total</th></tr></thead><tbody>'+
+    b.items.map(function(it,i){return '<tr><td>'+(i+1)+'</td><td>'+(it.from||'-')+'</td><td>'+(it.to||'-')+'</td><td>'+(it.cls||'-')+'</td><td>'+it.date+'</td><td>'+it.qty+'</td><td>Rs.'+it.price.toFixed(2)+'</td><td>Rs.'+(it.extra||0).toFixed(2)+'</td><td>Rs.'+it.total.toFixed(2)+'</td></tr>';}).join('')+
+    '</tbody></table></div><div style="margin-top:12px;background:#0f172a;padding:12px;border-radius:8px;">'+
+    '<div style="display:flex;justify-content:space-between;color:#94a3b8;padding:4px 0;"><span>Subtotal</span><span>Rs.'+b.subtotal.toFixed(2)+'</span></div>'+
+    (b.discount>0?'<div style="display:flex;justify-content:space-between;color:#94a3b8;padding:4px 0;"><span>Discount</span><span>-Rs.'+b.discount.toFixed(2)+'</span></div>':'')+
+    '<div style="display:flex;justify-content:space-between;font-weight:700;color:#f1f5f9;padding:8px 0;border-top:1px solid #334155;margin-top:4px;"><span>Grand Total</span><span>Rs.'+b.grand.toFixed(2)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;color:#34d399;"><span>Paid</span><span>Rs.'+b.paid.toFixed(2)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;color:#f87171;font-weight:700;"><span>Due</span><span>Rs.'+b.due.toFixed(2)+'</span></div></div>';
+  document.getElementById('billModal').classList.add('open');
+}
+function closeModal(){document.getElementById('billModal').classList.remove('open');}
+function printBill(){var w=window.open('','_blank');w.document.write('<!DOCTYPE html><html><head><title>Invoice</title><style>body{font-family:Arial;margin:20px;}table{width:100%;border-collapse:collapse;}th,td{padding:8px;border:1px solid #ddd;}th{background:#2c3e50;color:white;}</style></head><body>'+document.getElementById('printBillArea').innerHTML+'</body></html>');w.document.close();setTimeout(function(){w.print();w.close();},400);}
+function openPayModal(id){
+  currentPayBillId=id;
+  var b=bills.find(function(x){return x.id===id;});
+  var c=customers.find(function(x){return x.id===b.customerId;});
+  document.getElementById('payModalContent').innerHTML='<strong style="color:#f1f5f9;">'+(c?c.name:'')+'</strong> &nbsp; Due: <span style="color:#f87171;font-weight:700;">Rs.'+b.due.toFixed(2)+'</span>';
+  document.getElementById('payAmount').value='';
+  document.getElementById('payModal').classList.add('open');
+}
+function closePayModal(){document.getElementById('payModal').classList.remove('open');currentPayBillId=null;}
+function receivePayment(){
+  var amt=parseFloat(document.getElementById('payAmount').value);
+  if(!amt||amt<=0){alert('Enter valid amount!');return;}
+  var b=bills.find(function(x){return x.id===currentPayBillId;});
+  var actual=Math.min(amt,b.due);
+  b.paid+=actual; b.due-=actual;
+  b.payments.push({date:new Date().toISOString().split('T')[0],amount:actual});
+  saveData(); closePayModal(); renderBills(); alert('Rs.'+actual.toFixed(2)+' received!');
+}
+
+// ---- TICKETS ----
+function showTkTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='tkPending') renderTk('pending');
+  if(id==='tkHistory') renderTk('all');
+  if(id==='tkIncomplete') renderTk('incomplete');
+  if(id==='tkComplete') renderTk('complete');
+  if(id==='tkCancel') renderTk('cancel');
+}
+function initTicketForm(){
+  document.getElementById('tk_date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('tk_passengers').innerHTML='';
+  initStationDrop('tk_src'); initStationDrop('tk_dst');
+  var dl=document.getElementById('tk_name_list');
+  var unique=[...new Set(tickets.map(function(t){return t.name;}).filter(Boolean))];
+  dl.innerHTML=unique.map(function(n){return '<option value="'+n+'">';}).join('');
+}
+function addPassenger(){
+  var tbody=document.getElementById('tk_passengers');
+  var n=tbody.rows.length+1;
+  var tr=tbody.insertRow();
+  tr.innerHTML='<td style="color:#38bdf8;text-align:center;">'+n+'</td>'+
+    '<td><input class="tk-inp" placeholder="Name" style="width:100%;"></td>'+
+    '<td><input class="tk-inp" type="number" placeholder="Age" style="width:60px;"></td>'+
+    '<td><select class="tk-sel" style="width:80px;"><option value="">-</option><option>Male</option><option>Female</option><option>Other</option></select></td>'+
+    '<td><button onclick="this.closest(\'tr\').remove();renumberPax();" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 9px;cursor:pointer;">✕</button></td>';
+}
+function renumberPax(){document.querySelectorAll('#tk_passengers tr').forEach(function(tr,i){tr.cells[0].textContent=i+1;});}
+function calcTkDue(){
+  var c=parseFloat(document.getElementById('tk_cust_price').value)||0;
+  var a=parseFloat(document.getElementById('tk_adv_price').value)||0;
+  document.getElementById('tk_due_price').value=Math.max(0,c-a);
+}
+function saveTicket(){
+  var src=document.getElementById('tk_src').value.trim();
+  var dst=document.getElementById('tk_dst').value.trim();
+  var date=document.getElementById('tk_date').value;
+  if(!src||!dst||!date){alert('Source, Destination and Date required!');return;}
+  var passengers=[];
+  document.querySelectorAll('#tk_passengers tr').forEach(function(tr){
+    var cells=tr.querySelectorAll('input,select');
+    if(cells[0]&&cells[0].value.trim()) passengers.push({name:cells[0].value.trim(),age:cells[1].value,gender:cells[2].value});
+  });
+  var cp=parseFloat(document.getElementById('tk_cust_price').value)||0;
+  var ap=parseFloat(document.getElementById('tk_adv_price').value)||0;
+  var dp=Math.max(0,cp-ap);
+  var ticket={id:Date.now(),name:document.getElementById('tk_name').value.trim()||'Ticket-'+Date.now().toString().slice(-5),src:src,dst:dst,date:date,train:document.getElementById('tk_train').value.trim(),cls:document.getElementById('tk_class').value,quota:document.getElementById('tk_quota').value,mob:document.getElementById('tk_mob').value,custPrice:cp,advPrice:ap,duePrice:dp,passengers:passengers,status:'pending',createdOn:new Date().toISOString().split('T')[0],cancelledOn:''};
+  if(editingTicketId){
+    var idx=tickets.findIndex(function(x){return x.id===editingTicketId;});
+    if(idx!==-1){ticket.id=editingTicketId;ticket.status=tickets[idx].status;ticket.cancelledOn=tickets[idx].cancelledOn;tickets[idx]=ticket;}
+    editingTicketId=null;
+    var sb=document.querySelector('#tkNew .btn-green');if(sb){sb.textContent='💾 Save Ticket';sb.style.background='';}
+  } else {
+    tickets.push(ticket);
+  }
+  saveTk();
+  ['tk_src','tk_dst','tk_train','tk_mob','tk_name','tk_cust_price','tk_adv_price','tk_due_price'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('tk_passengers').innerHTML='';
+  document.getElementById('tk_date').value=new Date().toISOString().split('T')[0];
+  renderDashboard();
+  renderTk('pending');
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('tkPending').classList.add('active');
+  document.querySelectorAll('.tab')[1].classList.add('active');
+}
+function renderTk(filter,search){
+  filter=filter||'all'; search=search||'';
+  var map={all:'tkHistoryTable',pending:'tkPendingTable',incomplete:'tkIncompleteTable',complete:'tkCompleteTable',cancel:'tkCancelTable'};
+  var tbody=document.getElementById(map[filter]);
+  if(!tbody) return;
+  var list=filter==='all'?tickets.slice():tickets.filter(function(t){return t.status===filter;});
+  if(search){var sl=search.toLowerCase();list=list.filter(function(t){return t.name.toLowerCase().indexOf(sl)>=0||t.src.toLowerCase().indexOf(sl)>=0||t.dst.toLowerCase().indexOf(sl)>=0;});}
+  list=list.reverse();
+  function badge(s){if(s==='complete') return '<span class="badge badge-complete">Complete</span>';if(s==='cancel') return '<span class="badge badge-cancel">Cancelled</span>';if(s==='incomplete') return '<span class="badge badge-incomplete">Incomplete</span>';return '<span class="badge badge-pending">Pending</span>';}
+  var showPax=(filter==='all'||filter==='complete'||filter==='pending'||filter==='incomplete');
+  var showCancelDate=(filter==='cancel');
+  var rows='';
+  list.forEach(function(t,i){
+    var pax=showPax?'<td>'+(t.passengers.map(function(p){return p.name;}).join(', ')||'-')+'</td>':'';
+    var cd=showCancelDate?'<td>'+(t.cancelledOn||'-')+'</td>':'';
+    var pr='<td style="color:#34d399;">Rs.'+parseFloat(t.custPrice||0).toFixed(2)+'</td><td style="color:#38bdf8;">Rs.'+parseFloat(t.advPrice||0).toFixed(2)+'</td><td style="color:#f87171;font-weight:700;">Rs.'+parseFloat(t.duePrice||0).toFixed(2)+'</td>';
+    var sc=filter==='all'?'<td>'+badge(t.status)+'</td>':'';
+    var b='<button class="btn btn-blue" style="padding:3px 8px;font-size:11px;" onclick="editTicket('+t.id+')">Edit</button> ';
+    if(t.status==='pending') b+='<button class="btn btn-orange" style="padding:3px 8px;font-size:11px;" onclick="changeTkStatus('+t.id+',\'incomplete\')">Incomplete</button> ';
+    if(t.status!=='complete'&&t.status!=='cancel') b+='<button class="btn btn-green" style="padding:3px 8px;font-size:11px;" onclick="changeTkStatus('+t.id+',\'complete\')">Complete</button> ';
+    if(t.status!=='cancel') b+='<button class="btn btn-red" style="padding:3px 8px;font-size:11px;" onclick="changeTkStatus('+t.id+',\'cancel\')">Cancel</button> ';
+    b+='<button class="btn" style="padding:3px 8px;font-size:11px;background:#475569;color:white;" onclick="deleteTk('+t.id+')">Del</button>';
+    rows+='<tr><td>'+(i+1)+'</td><td>'+t.name+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.date+'</td><td>'+(t.train||'-')+'</td><td>'+t.cls+'</td>'+pax+cd+pr+sc+'<td style="display:flex;gap:3px;flex-wrap:wrap;">'+b+'</td></tr>';
+  });
+  tbody.innerHTML=rows||'<tr><td colspan="13" style="text-align:center;color:#475569;">No tickets</td></tr>';
+}
+function changeTkStatus(id,status){
+  var t=tickets.find(function(x){return x.id===id;});if(!t)return;
+  t.status=status;if(status==='cancel')t.cancelledOn=new Date().toISOString().split('T')[0];
+  saveTk();['all','pending','incomplete','complete','cancel'].forEach(function(f){renderTk(f);});renderDashboard();
+}
+function deleteTk(id){if(!confirm('Delete ticket?'))return;tickets=tickets.filter(function(t){return t.id!==id;});saveTk();['all','pending','incomplete','complete','cancel'].forEach(function(f){renderTk(f);});renderDashboard();}
+function editTicket(id){
+  var t=tickets.find(function(x){return x.id===id;});if(!t)return;
+  editingTicketId=id;
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('tkNew').classList.add('active');
+  document.querySelectorAll('.tab')[0].classList.add('active');
+  initTicketForm();
+  setTimeout(function(){
+    document.getElementById('tk_src').value=t.src;
+    document.getElementById('tk_dst').value=t.dst;
+    document.getElementById('tk_date').value=t.date;
+    document.getElementById('tk_train').value=t.train||'';
+    document.getElementById('tk_mob').value=t.mob||'';
+    document.getElementById('tk_name').value=t.name;
+    document.getElementById('tk_class').value=t.cls;
+    document.getElementById('tk_quota').value=t.quota||'GN';
+    document.getElementById('tk_cust_price').value=t.custPrice||'';
+    document.getElementById('tk_adv_price').value=t.advPrice||'';
+    document.getElementById('tk_due_price').value=t.duePrice||'';
+    var tbody=document.getElementById('tk_passengers');tbody.innerHTML='';
+    t.passengers.forEach(function(p,idx){
+      var tr=tbody.insertRow();
+      tr.innerHTML='<td style="color:#38bdf8;text-align:center;">'+(idx+1)+'</td>'+
+        '<td><input class="tk-inp" value="'+(p.name||'')+'" style="width:100%;"></td>'+
+        '<td><input class="tk-inp" type="number" value="'+(p.age||'')+'" style="width:60px;"></td>'+
+        '<td><select class="tk-sel" style="width:80px;"><option value="">-</option><option '+(p.gender==='Male'?'selected':'')+'>Male</option><option '+(p.gender==='Female'?'selected':'')+'>Female</option><option '+(p.gender==='Other'?'selected':'')+'>Other</option></select></td>'+
+        '<td><button onclick="this.closest(\'tr\').remove();renumberPax();" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 9px;cursor:pointer;">✕</button></td>';
+    });
+    var sb=document.querySelector('#tkNew .btn-green');if(sb){sb.textContent='💾 Update Ticket';sb.style.background='#f97316';}
+  },100);
+}
+
+// ---- STATIONS ----
+var STATIONS=['New Delhi (NDLS)','Delhi Junction (DLI)','Delhi Sarai Rohilla (DEE)','Hazrat Nizamuddin (NZM)','Anand Vihar Terminal (ANVT)','Delhi Cantt (DEC)',
+  // UP
+  'Agra Cantt (AGC)','Agra Fort (AF)','Aligarh (ALJN)','Allahabad (ALD)','Prayagraj Rambagh (PRG)','Naini (NYN)','Ayodhya (AY)','Ayodhya Cantt (ACN)','Azamgarh (AZ)','Mau (MAU)','Bahraich (BRK)','Ballia (BUI)','Rasra (RSA)','Banda (BAND)','Barabanki (BBK)','Bareilly (BE)','Bareilly City (BC)','Basti (BST)','Khalilabad (KLD)','Deoria Sadar (DEOS)','Bhatni (BTT)','Etah (ETH)','Etawah (ETW)','Faizabad (FD)','Farrukhabad (FBD)','Fatehpur (FTP)','Firozabad (FZD)','Ghaziabad (GZB)','Hapur (HPU)','Ghazipur City (GCT)','Gonda (GD)','Mankapur (MUR)','Balrampur (BAR)','Gorakhpur (GKP)','Gorakhpur Cantt (GKC)','Nautanwa (NTV)','Hardoi (HRI)','Jaunpur City (JNU)','Jhansi (JHS)','Orai (ORAI)','Kanpur Central (CNB)','Kanpur Anwarganj (KWV)','Kushinagar (KSNR)','Lakhimpur (LMP)','Lucknow (LKO)','Lucknow NR (LJN)','Aishbagh (ASH)','Mathura (MTJ)','Vrindavan Road (VRD)','Meerut City (MTC)','Meerut Cantt (MRT)','Mirzapur (MZP)','Chunar (CRN)','Moradabad (MB)','Rampur (RMP)','Muzaffarnagar (MOZ)','Pratapgarh (PBH)','Rae Bareli (RBL)','Saharanpur (SRE)','Roorkee (RK)','Shahjahanpur (SPN)','Sitapur (STP)','Sultanpur (SLN)','Unnao (ON)','Varanasi (BSB)','Varanasi City (BCY)','Manduadih (MUV)','Kashi (KEI)','Mughal Sarai (MGS)','Pilibhit (PBE)','Kheri (KRE)','Siddharthnagar (SDNR)','Maharajganj (MRGJ)','Sonbhadra (SNBD)',
+  // Bihar
+  'Patna (PNBE)','Patna Sahib (PNC)','Rajendra Nagar (RJPB)','Danapur (DNR)','Arrah (ARA)','Buxar (BXR)','Dumraon (DMN)','Sasaram (SSM)','Dehri On Sone (DOS)','Gaya (GAYA)','Rafiganj (RFJ)','Chhapra (CPR)','Revelganj (RVG)','Darbhanga (DBG)','Laheriasarai (LHR)','Sakri (SKI)','Sitamarhi (SMI)','Jaynagar (JYG)','Muzaffarpur (MFP)','Hajipur (HJP)','Sonpur (SEE)','Motihari (MTA)','Bettiah (BTH)','Narkatiaganj (NKE)','Bagaha (BGA)','Bhagalpur (BGP)','Sultanganj (SGJ)','Kahalgaon (KGM)','Katihar (KIR)','Mansi (MNE)','Naugachia (NGC)','Purnia (PRNA)','Purnia Court (PRNC)','Banmankhi (BMH)','Samastipur (SPJ)','Rosera (RXL)','Barauni (BJU)','Begusarai (BGS)','Teghra (TGA)','Siwan (SV)','Gopalganj (GPL)','Madhubani (MBI)','Saharsa (SHC)','Supaul (SPJ)','Khagaria (KGG)','Jamui (JMU)','Jhajha (JAJ)','Lakhisarai (LKR)','Munger (MGR)','Nawada (NWD)','Jehanabad (JHD)','Biharsharif (BEHS)','Rajgir (RGJ)','Araria (ARAA)','Forbesganj (FBG)','Kishanganj (KNE)','Madhepura (MDP)',
+  // Other Major
+  'Howrah (HWH)','Kolkata (KOAA)','Asansol (ASN)','Burdwan (BWN)','New Jalpaiguri (NJP)','Malda Town (MLDT)','Mumbai Central (BCT)','Mumbai CST (CSTM)','Dadar (DR)','Lokmanya Tilak Terminus (LTT)','Pune (PUNE)','Nashik Road (NK)','Nagpur (NGP)','Ahmedabad (ADI)','Vadodara (BRC)','Surat (ST)','Rajkot (RJT)','Bhavnagar (BVC)','Gandhidham (GIMB)','Jaipur (JP)','Jodhpur (JU)','Bikaner (BKN)','Udaipur City (UDZ)','Ajmer (AII)','Kota (KOTA)','Bhopal (BPL)','Indore (INDB)','Gwalior (GWL)','Jabalpur (JBP)','Ratlam (RTM)','Ujjain (UJN)','Chandigarh (CDG)','Amritsar (ASR)','Ludhiana (LDH)','Jalandhar City (JUC)','Jammu Tawi (JAT)','Dehradun (DDN)','Haridwar (HW)','Ranchi (RNC)','Dhanbad (DHN)','Bokaro Steel City (BKSC)','Bhubaneswar (BBS)','Cuttack (CTC)','Puri (PURI)','Guwahati (GHY)','Dibrugarh (DBRG)','Raipur (R)','Bilaspur (BSP)',
+  // South
+  'Bangalore City (SBC)','Yeshvantpur (YPR)','Bangalore Cantt (BNC)','Krishnarajapuram (KJM)','Mysore (MYS)','Hubli (UBL)','Dharwad (DWR)','Belgaum (BGM)','Mangalore Central (MAQ)','Mangalore Junction (MAJN)','Udupi (UD)','Hassan (HAS)','Davangere (DVG)','Bellary (BAY)','Hospet (HPT)','Gulbarga (GR)','Bidar (BIDR)','Raichur (RC)','Bijapur (BJP)',
+  'Chennai Central (MAS)','Chennai Egmore (MS)','Tambaram (TBM)','Coimbatore (CBE)','Madurai (MDU)','Tiruchirapalli (TPJ)','Tirunelveli (TEN)','Nagercoil (NCJ)','Kanyakumari (CAPE)','Salem (SA)','Erode (ED)','Karur (KRR)','Villupuram (VM)','Pondicherry (PDY)','Thanjavur (TJ)','Kumbakonam (KMU)','Vellore Cantt (VLR)','Katpadi (KPD)','Tiruppur (TUP)','Dindigul (DG)','Tiruvannamalai (TNM)','Ooty (UAM)','Coonoor (CNR)',
+  'Thiruvananthapuram (TVC)','Kochuveli (KCVL)','Kollam (QLN)','Alappuzha (ALLP)','Ernakulam (ERS)','Ernakulam Town (ERN)','Aluva (AWY)','Thrissur (TCR)','Palakkad (PGT)','Shoranur (SRR)','Kozhikode (CLT)','Kannur (CAN)','Kasaragod (KGQ)','Kottayam (KTYM)','Changanacherry (CGY)','Chengannur (CNGR)','Thiruvalla (TRVL)','Kayamkulam (KYJ)',
+  'Hyderabad (HYB)','Secunderabad (SC)','Kacheguda (KCG)','Warangal (WL)','Kazipet (KZJ)','Nizamabad (NZB)','Karimnagar (KMC)','Khammam (KMT)','Nalgonda (NLDA)','Mahbubnagar (MBNR)','Ramagundam (RDM)',
+  'Visakhapatnam (VSKP)','Vijayawada (BZA)','Guntur (GNT)','Rajahmundry (RJY)','Kakinada Town (CCT)','Tirupati (TPTY)','Nellore (NLR)','Kurnool City (KRNT)','Kadapa (HX)','Anantapur (ATP)','Vizianagaram (VZM)','Eluru (EE)','Ongole (OGL)',
+  'Madgaon (MAO)',
+  // Extra UP
+  'Deoria (DEOS)','Bijnor (BJO)','Bulandshahr (BNSR)','Chandauli (CUI)','Chitrakoot (CTKT)','Etah (ETH)','Jalaun (JLN)','Kasganj (KSJ)','Kaushambi (KSBI)','Mainpuri (MPA)','Muzaffarnagar (MOZ)','Sant Kabir Nagar (SKNR)','Shamli (SMQL)','Shravasti (SRTS)','Sitapur City (STC)','Unnao (ON)','Varanasi City (BCY)','Vindhyachal (VYC)','Chunar (CRN)','Garhmukteshwar (GMC)','Amroha (AMO)','Khatauli (KTL)','Deoband (DBD)','Malhour (MLN)','Govindpuri (GVP)','Kanpur Anwarganj (KWV)','Kosi Kalan (KSV)','Mathura Cantt (MC)',
+  // Extra Bihar
+  'Phulwari Sharif (PLWR)','Bodh Gaya Road (BGRD)','Guraru (GRU)','Dighwara (DGWR)','Lalganj (LGJ)','Sagauli (SGL)','Dalsinghsarai (DSS)','Maharajganj Bihar (MRJ)','Vaishali (VSHL)','Islampur (IMR)',
+  // Extra South - Tamil Nadu
+  'Avadi (AVD)','Ambattur (ABU)','Perambur (PER)','Srirangam (SRM)','Mettupalayam (MTP)','Cuddalore Port (CUPJ)','Mayiladuthurai (MV)','Nagapattinam (NGT)','Tiruvarur (TV)','Ramanathapuram (RMM)','Virudhunagar (VPT)','Thoothukudi (TUT)','Hosur (HOS)','Dharmapuri (DPJ)','Krishnagiri (KRN)','Jolarpettai (JTJ)','Chengalpattu (CGL)','Kanchipuram (CJ)','Tiruvannamalai (TNM)','Vriddhachalam (VRI)','Ranipet (RPN)','Walajah Road (WJR)','Ambur (ABR)','Tirupattur (TPT)','Vaniyambadi (VNI)','Gudiyatham (GDM)','Coimbatore North (CBF)','Podanur (PTJ)','Kodaikanal Road (KQN)','Arakkonam (AJJ)',
+  // Extra Kerala
+  'Nemom (NEM)','Varkala (VAK)','Attingal (ATL)','Karunagapally (KNGP)','Chengannur (CNGR)','Thiruvalla (TRVL)','Ettumanoor (ETM)','Cherthala (SRTL)','Angamaly (AGX)','Chalakudy (CKI)','Irinjalakuda (IJK)','Ottappalam (OTP)','Palakkad Town (PCB)','Tirur (TIR)','Tanur (TANR)','Feroke (FK)','Vadakara (BDJ)','Mahe (MAHE)','Thalassery (TLY)','Payyanur (PAY)','Kanhangad (KZE)','Guruvayur (GUV)','Nilambur Road (NBR)','Paravur (PVU)',
+  // Extra Karnataka
+  'Baiyappanahalli (BYPL)','Whitefield (WFD)','Mandya (MYA)','Srirangapatna (SRGP)','Gadag (GDG)','Londa (LD)','Karwar (KAWR)','Kumta (KMTA)','Arsikere (ASK)','Tumkur (TK)','Harihar (HRR)','Ranibennur (RNR)','Shimoga Town (SMET)','Wadi (WADI)','Bagalkot (BGK)','Kolar (KGF)','Bangarapet (BWT)','Chamarajanagar (CMNR)','Yadgir (YG)','Chitradurga (CTA)','Udupi (UD)',
+  // Extra AP
+  'Duvvada (DVD)','Samalkot (SLO)','Bhimavaram Junction (BVRM)','Narsapur (NSP)','Gudivada (GDV)','Machilipatnam (MTM)','Tenali (TEL)','Bapatla (BPP)','Chirala (CLX)','Kavali (KVZ)','Gudur (GDR)','Renigunta (RU)','Chittoor (CTO)','Nandyal (NDL)','Proddatur (PDTR)','Dharmavaram (DMM)','Hindupur (HUP)','Bobbili (BBI)','Palasa (PSA)','Srikakulam Road (SKLM)','Tadepalligudem (TDD)','Nidadavolu (NDD)','Anakapalle (AKP)','Tuni (TUNI)','Peddapuram (PPM)',
+  // Extra Telangana
+  'Begumpet (BMT)','Nampally (NMP)','Lingampalli (LPI)','Bodhan (BDN)','Peddapalli (PDPL)','Kothagudem (KGDM)','Miryalaguda (MYD)','Jadcherla (JCL)','Adilabad (ADB)','Mancherial (MCL)','Bellampalli (BPA)','Medak (MEK)','Vikarabad (VKB)','Suryapet (SRPT)','Bhongir (BNGR)','Tandur (TDU)','Gadwal (GWD)','Dornakal (DKJ)'];
+function stationInput(id,ph){return '<input type="text" id="'+id+'" placeholder="'+ph+'" class="item-'+ph.toLowerCase()+' st-input" autocomplete="off" oninput="filterStation(\''+id+'\')" onfocus="openDrop(\''+id+'\')" style="width:100%;padding:8px 6px;border:none;outline:none;font-size:13px;background:transparent;color:#e2e8f0;box-sizing:border-box;"><div id="'+id+'_list" class="st-list"></div>';}
+function initStationDrop(id){renderStationList(id,STATIONS);document.addEventListener('click',function(e){var el=document.getElementById(id);if(el&&!el.closest('.st-wrap').contains(e.target)){var l=document.getElementById(id+'_list');if(l)l.classList.remove('open');}});}
+function openDrop(id){filterStation(id);var l=document.getElementById(id+'_list');if(l)l.classList.add('open');}
+function filterStation(id){var val=document.getElementById(id).value.toLowerCase();var f=val?STATIONS.filter(function(s){return s.toLowerCase().indexOf(val)>=0;}):STATIONS;renderStationList(id,f.slice(0,30));var l=document.getElementById(id+'_list');if(l)l.classList.add('open');}
+function renderStationList(id,list){var el=document.getElementById(id+'_list');if(!el)return;el.innerHTML=list.map(function(s){return '<div onclick="selectStation(\''+id+'\',\''+s+'\')">'+s+'</div>';}).join('')||'<div style="color:#475569;cursor:default;">No results</div>';}
+function selectStation(id,val){document.getElementById(id).value=val;var l=document.getElementById(id+'_list');if(l)l.classList.remove('open');calcTotal();}
+
+// ---- DASHBOARD ----
+var dueChart=null,tkChart=null;
+function renderDashboard(){
+  var totalBills=bills.length;
+  var totalRev=bills.reduce(function(s,b){return s+b.grand;},0);
+  var totalDue=bills.reduce(function(s,b){return s+b.due;},0);
+  var tkP=tickets.filter(function(t){return t.status==='pending';}).length;
+  var tkC=tickets.filter(function(t){return t.status==='complete';}).length;
+  var tkI=tickets.filter(function(t){return t.status==='incomplete';}).length;
+  var tkX=tickets.filter(function(t){return t.status==='cancel';}).length;
+  document.getElementById('statsGrid').innerHTML=
+    '<div class="stat-card blue"><div class="lbl">Customers</div><div class="val">'+customers.length+'</div><div class="sub">Total registered</div></div>'+
+    '<div class="stat-card orange"><div class="lbl">Total Bills</div><div class="val">'+totalBills+'</div><div class="sub">All time</div></div>'+
+    '<div class="stat-card green"><div class="lbl">Revenue</div><div class="val">Rs.'+Math.round(totalRev)+'</div><div class="sub">Total billed</div></div>'+
+    '<div class="stat-card red"><div class="lbl">Total Due</div><div class="val">Rs.'+Math.round(totalDue)+'</div><div class="sub">Pending collection</div></div>'+
+    '<div class="stat-card purple"><div class="lbl">Total Tickets</div><div class="val">'+tickets.length+'</div><div class="sub">All orders</div></div>'+
+    '<div class="stat-card pink"><div class="lbl">Pending</div><div class="val">'+tkP+'</div><div class="sub">Awaiting action</div></div>'+
+    '<div class="stat-card green"><div class="lbl">Complete</div><div class="val">'+tkC+'</div><div class="sub">Confirmed</div></div>'+
+    '<div class="stat-card red"><div class="lbl">Cancelled</div><div class="val">'+tkX+'</div><div class="sub">Cancelled orders</div></div>';
+
+  // Due chart
+  var custDues=customers.map(function(c){return{name:c.name,due:bills.filter(function(b){return b.customerId===c.id;}).reduce(function(s,b){return s+b.due;},0)};}).filter(function(x){return x.due>0;}).sort(function(a,b){return b.due-a.due;}).slice(0,8);
+  if(dueChart) dueChart.destroy();
+  var ctx1=document.getElementById('dueChart').getContext('2d');
+  if(custDues.length>0){dueChart=new Chart(ctx1,{type:'bar',data:{labels:custDues.map(function(x){return x.name;}),datasets:[{label:'Due (Rs.)',data:custDues.map(function(x){return x.due;}),backgroundColor:'#f87171',borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:'#64748b'}},x:{ticks:{color:'#64748b'}}}}});}
+
+  // Ticket status chart
+  if(tkChart) tkChart.destroy();
+  var ctx2=document.getElementById('tkChart').getContext('2d');
+  tkChart=new Chart(ctx2,{type:'doughnut',data:{labels:['Pending','Complete','Incomplete','Cancelled'],datasets:[{data:[tkP,tkC,tkI,tkX],backgroundColor:['#a78bfa','#34d399','#fb923c','#f87171'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{labels:{color:'#94a3b8'}}}}});
+
+  // Recent tickets
+  var recent=tickets.slice().reverse().slice(0,5);
+  document.getElementById('recentTickets').innerHTML=recent.map(function(t,i){
+    var b=t.status==='complete'?'badge-complete':t.status==='cancel'?'badge-cancel':t.status==='incomplete'?'badge-incomplete':'badge-pending';
+    return '<tr><td>'+(i+1)+'</td><td>'+t.name+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.date+'</td><td><span class="badge '+b+'">'+t.status+'</span></td></tr>';
+  }).join('')||'<tr><td colspan="6" style="text-align:center;color:#475569;">No tickets yet</td></tr>';
+}
+
+// ---- BACKUP / IMPORT ----
+function exportBackup() {
+  var data = {
+    customers: customers,
+    bills: bills,
+    tickets: tickets,
+    exportedOn: new Date().toISOString()
+  };
+  var jsContent = '// RailDesk Auto Backup - ' + new Date().toLocaleString() + '\n' +
+    '// Is file ko dashboard.html ke saath same folder mein rakho\n' +
+    '// Import button se load karo\n\n' +
+    'var BACKUP_DATA = ' + JSON.stringify(data, null, 2) + ';\n';
+  var blob = new Blob([jsContent], {type: 'application/javascript'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'raildesk_data.js';
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('lastSaved').textContent = 'Last saved: ' + new Date().toLocaleTimeString();
+}
+
+// Auto backup reminder every 10 minutes
+setInterval(function() {
+  var lastTime = localStorage.getItem('bs_last_backup');
+  var now = Date.now();
+  if (!lastTime || (now - parseInt(lastTime)) > 600000) {
+    localStorage.setItem('bs_last_backup', now);
+    document.getElementById('backupAlert').style.display = 'flex';
+  }
+}, 60000);
+
+function importBackup(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var content = e.target.result;
+      var data;
+      // JS file support
+      if (file.name.endsWith('.js')) {
+        var match = content.match(/var BACKUP_DATA\s*=\s*(\{[\s\S]*\});/);
+        if (!match) { alert('Invalid backup JS file!'); return; }
+        data = JSON.parse(match[1]);
+      } else {
+        data = JSON.parse(content);
+      }
+      if (!data.customers && !data.bills && !data.tickets) {
+        alert('Invalid backup file!'); return;
+      }
+      if (!confirm('Import karoge? Existing data replace ho jayega.')) return;
+      if (data.customers) { customers = data.customers; localStorage.setItem('bs_customers', JSON.stringify(customers)); }
+      if (data.bills) { bills = data.bills; localStorage.setItem('bs_bills', JSON.stringify(bills)); }
+      if (data.tickets) { tickets = data.tickets; localStorage.setItem('bs_tickets', JSON.stringify(tickets)); }
+      renderDashboard();
+      alert('Import successful! ' + (data.customers||[]).length + ' customers, ' + (data.bills||[]).length + ' bills, ' + (data.tickets||[]).length + ' tickets loaded.');
+    } catch(err) {
+      alert('File read error: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ---- INIT ----
+renderDashboard();
+</script>
+</body>
+</html>
