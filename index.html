@@ -320,7 +320,7 @@ canvas{max-height:300px;}
         <div class="form-group"><label>Name *</label><input id="custName" placeholder="Customer Name"></div>
         <div class="form-group"><label>Phone</label><input id="custPhone" placeholder="Phone Number"></div>
         <div class="form-group"><label>Address</label><input id="custAddress" placeholder="Address"></div>
-        <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-green" style="margin-top:20px;" onclick="addCustomer()">Add Customer</button></div>
+        <div class="form-group" style="justify-content:flex-end;"><button id="custSaveBtn" class="btn btn-green" style="margin-top:20px;" onclick="addCustomer()">Add Customer</button></div>
       </div>
     </div>
     <div class="card"><h2>👥 Customer List</h2>
@@ -678,13 +678,33 @@ function showSection(id,el){
 document.getElementById('topDate').textContent = new Date().toDateString();
 
 // ---- CUSTOMERS ----
+var editingCustomerId = null;
+
 function addCustomer(){
   var name=document.getElementById('custName').value.trim();
   if(!name){alert('Name required!');return;}
-  customers.push({id:Date.now(),name:name,phone:document.getElementById('custPhone').value.trim(),address:document.getElementById('custAddress').value.trim()});
+  if(editingCustomerId){
+    var c=customers.find(function(x){return x.id===editingCustomerId;});
+    if(c){c.name=name;c.phone=document.getElementById('custPhone').value.trim();c.address=document.getElementById('custAddress').value.trim();}
+    editingCustomerId=null;
+    var btn=document.getElementById('custSaveBtn');btn.textContent='Add Customer';btn.style.background='';
+  } else {
+    customers.push({id:Date.now(),name:name,phone:document.getElementById('custPhone').value.trim(),address:document.getElementById('custAddress').value.trim()});
+  }
   saveData();
   ['custName','custPhone','custAddress'].forEach(function(i){document.getElementById(i).value='';});
   renderCustomers();
+}
+function editCustomer(id){
+  var c=customers.find(function(x){return x.id===id;});
+  if(!c) return;
+  editingCustomerId=id;
+  document.getElementById('custName').value=c.name;
+  document.getElementById('custPhone').value=c.phone||'';
+  document.getElementById('custAddress').value=c.address||'';
+  var btn=document.getElementById('custSaveBtn');btn.textContent='💾 Update Customer';btn.style.background='#f97316';
+  document.getElementById('custName').focus();
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 function deleteCustomer(id){
   if(!confirm('Delete customer?')) return;
@@ -699,7 +719,11 @@ function renderCustomers(search){
   tbody.innerHTML=list.map(function(c,i){
     var cb=bills.filter(function(b){return b.customerId===c.id;});
     var due=cb.reduce(function(s,b){return s+b.due;},0);
-    return '<tr><td>'+(i+1)+'</td><td>'+c.name+'</td><td>'+(c.phone||'-')+'</td><td>'+(c.address||'-')+'</td><td>'+cb.length+'</td><td style="color:'+(due>0?'#f87171':'#34d399')+';">Rs.'+due.toFixed(2)+'</td><td><button class="btn btn-red" style="padding:4px 10px;" onclick="deleteCustomer('+c.id+')">Del</button></td></tr>';
+    return '<tr><td>'+(i+1)+'</td><td>'+c.name+'</td><td>'+(c.phone||'-')+'</td><td>'+(c.address||'-')+'</td><td>'+cb.length+'</td><td style="color:'+(due>0?'#f87171':'#34d399')+';">Rs.'+due.toFixed(2)+'</td>'+
+      '<td style="display:flex;gap:4px;">'+
+        '<button class="btn btn-purple" style="padding:4px 10px;" onclick="editCustomer('+c.id+')">Edit</button>'+
+        '<button class="btn btn-red" style="padding:4px 10px;" onclick="deleteCustomer('+c.id+')">Del</button>'+
+      '</td></tr>';
   }).join('')||'<tr><td colspan="7" style="text-align:center;color:#475569;">No customers</td></tr>';
 }
 
@@ -754,6 +778,8 @@ function calcTotal(){
   document.getElementById('grandTotalDisplay').textContent='Rs.'+(grand<0?0:grand).toFixed(2);
   document.getElementById('dueDisplay').textContent='Rs.'+(due<0?0:due).toFixed(2);
 }
+var editingBillId = null;
+
 function saveBill(){
   var custId=parseInt(document.getElementById('billCustomer').value);
   if(!custId){alert('Select customer!');return;}
@@ -775,17 +801,70 @@ function saveBill(){
   var grand=Math.max(0,sub-disc);
   var paid=parseFloat(document.getElementById('amountPaid').value)||0;
   var due=Math.max(0,grand-paid);
-  bills.push({id:Date.now(),customerId:custId,date:document.getElementById('billDate').value,items:items,discount:disc,subtotal:sub,grand:grand,paid:paid,due:due,payments:paid>0?[{date:document.getElementById('billDate').value,amount:paid}]:[]});
-  saveData(); alert('Bill saved!'); clearBill();
+
+  if(editingBillId){
+    var idx=bills.findIndex(function(x){return x.id===editingBillId;});
+    if(idx!==-1){
+      var oldPaid=bills[idx].paid; var oldPayments=bills[idx].payments||[];
+      bills[idx]={id:editingBillId,customerId:custId,date:document.getElementById('billDate').value,items:items,discount:disc,subtotal:sub,grand:grand,paid:oldPaid,due:Math.max(0,grand-oldPaid),payments:oldPayments};
+    }
+    editingBillId=null;
+    var sb=document.querySelector('#billing .btn-green');if(sb){sb.textContent='💾 Save Bill';sb.style.background='';}
+    saveData(); alert('Bill update ho gaya!'); clearBill(); showSection('bills',document.querySelectorAll('.nav-item')[4]);
+  } else {
+    bills.push({id:Date.now(),customerId:custId,date:document.getElementById('billDate').value,items:items,discount:disc,subtotal:sub,grand:grand,paid:paid,due:due,payments:paid>0?[{date:document.getElementById('billDate').value,amount:paid}]:[]});
+    saveData(); alert('Bill saved!'); clearBill();
+  }
 }
-function clearBill(){initBill();}
+function clearBill(){editingBillId=null;initBill();var sb=document.querySelector('#billing .btn-green');if(sb){sb.textContent='💾 Save Bill';sb.style.background='';}}
+
+function editBill(id){
+  var b=bills.find(function(x){return x.id===id;});
+  if(!b) return;
+  editingBillId=id;
+  showSection('billing',document.querySelectorAll('.nav-item')[3]);
+  setTimeout(function(){
+    populateCustomerDropdown();
+    document.getElementById('billCustomer').value=b.customerId;
+    document.getElementById('billDate').value=b.date;
+    document.getElementById('billItems').innerHTML='';
+    document.getElementById('discountAmt').value=b.discount||'';
+    document.getElementById('amountPaid').value='';
+    billItemCount=0;
+    b.items.forEach(function(it){
+      billItemCount++;
+      var rowId='item_'+billItemCount;
+      var cls=['All Classes','Anubhuti (EA)','AC First (1A)','Vistadome AC (EV)','Exec. Chair (EC)','AC 2 Tier (2A)','First Class (FC)','AC 3 Tier (3A)','AC 3 Eco (3E)','AC Chair (CC)','Sleeper (SL)','Second Sitting (2S)'];
+      var row=document.createElement('div');
+      row.id=rowId; row.className='bill-row bill-item-row';
+      row.innerHTML=
+        '<div><div class="st-wrap" style="width:100%;">'+stationInput(rowId+'_from','From')+'</div></div>'+
+        '<div><div class="st-wrap" style="width:100%;">'+stationInput(rowId+'_to','To')+'</div></div>'+
+        '<div><select class="item-class" oninput="calcTotal()" style="width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;cursor:pointer;">'+cls.map(function(c){return '<option'+(c===it.cls?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+        '<div><input type="date" class="item-date" value="'+(it.date||'')+'" oninput="calcTotal()"></div>'+
+        '<div style="justify-content:center;"><input type="number" class="item-qty" value="'+(it.qty||1)+'" min="1" oninput="calcTotal()" style="text-align:center;width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 4px;font-size:13px;"></div>'+
+        '<div><input type="number" value="'+(it.price||'')+'" class="item-price" oninput="calcTotal()"></div>'+
+        '<div><input type="number" value="'+(it.extra||'')+'" class="item-extra" oninput="calcTotal()"></div>'+
+        '<div style="padding:8px;font-weight:700;color:#38bdf8;font-size:13px;" class="item-total">Rs.0</div>'+
+        '<div style="justify-content:center;padding:4px;"><button class="btn btn-red" style="padding:4px 8px;font-size:12px;" onclick="removeBillItem(\''+rowId+'\')">✕</button></div>';
+      document.getElementById('billItems').appendChild(row);
+      initStationDrop(rowId+'_from'); initStationDrop(rowId+'_to');
+      setTimeout(function(){
+        var fi=document.getElementById(rowId+'_from'); if(fi) fi.value=it.from||'';
+        var ti=document.getElementById(rowId+'_to'); if(ti) ti.value=it.to||'';
+      },50);
+    });
+    calcTotal();
+    var sb=document.querySelector('#billing .btn-green');if(sb){sb.textContent='💾 Update Bill';sb.style.background='#f97316';}
+  },100);
+}
 function renderBills(search){
   search=search||'';
   var tbody=document.getElementById('billsTable');
   var list=bills.filter(function(b){var c=customers.find(function(x){return x.id===b.customerId;});return c&&c.name.toLowerCase().indexOf(search.toLowerCase())>=0;}).sort(function(a,b){return b.id-a.id;});
   tbody.innerHTML=list.map(function(b,i){
     var c=customers.find(function(x){return x.id===b.customerId;});
-    return '<tr><td>'+(i+1)+'</td><td>'+b.date+'</td><td>'+(c?c.name:'?')+'</td><td>Rs.'+b.grand.toFixed(2)+'</td><td>Rs.'+b.paid.toFixed(2)+'</td><td style="color:'+(b.due>0?'#f87171':'#34d399')+';">Rs.'+b.due.toFixed(2)+'</td><td><span class="badge '+(b.due>0?'badge-incomplete':'badge-complete')+'">'+(b.due>0?'Due':'Paid')+'</span></td><td style="display:flex;gap:4px;"><button class="btn btn-blue" style="padding:4px 8px;" onclick="viewBill('+b.id+')">View</button>'+(b.due>0?'<button class="btn btn-orange" style="padding:4px 8px;" onclick="openPayModal('+b.id+')">Pay</button>':'')+'<button class="btn btn-red" style="padding:4px 8px;" onclick="deleteBill('+b.id+')">Del</button></td></tr>';
+    return '<tr><td>'+(i+1)+'</td><td>'+b.date+'</td><td>'+(c?c.name:'?')+'</td><td>Rs.'+b.grand.toFixed(2)+'</td><td>Rs.'+b.paid.toFixed(2)+'</td><td style="color:'+(b.due>0?'#f87171':'#34d399')+';">Rs.'+b.due.toFixed(2)+'</td><td><span class="badge '+(b.due>0?'badge-incomplete':'badge-complete')+'">'+(b.due>0?'Due':'Paid')+'</span></td><td style="display:flex;gap:4px;"><button class="btn btn-blue" style="padding:4px 8px;" onclick="viewBill('+b.id+')">View</button><button class="btn btn-purple" style="padding:4px 8px;" onclick="editBill('+b.id+')">Edit</button>'+(b.due>0?'<button class="btn btn-orange" style="padding:4px 8px;" onclick="openPayModal('+b.id+')">Pay</button>':'')+'<button class="btn btn-red" style="padding:4px 8px;" onclick="deleteBill('+b.id+')">Del</button></td></tr>';
   }).join('')||'<tr><td colspan="8" style="text-align:center;color:#475569;">No bills</td></tr>';
 }
 function deleteBill(id){if(!confirm('Delete bill?'))return;bills=bills.filter(function(b){return b.id!==id;});saveData();renderBills();}
@@ -1301,6 +1380,8 @@ function calcAgentTotal(){
   document.getElementById('agentDueDisplay').textContent='Rs.'+due.toFixed(2);
 }
 
+var editingAgentBillId = null;
+
 function saveAgentBill(){
   var agentId=parseInt(document.getElementById('agentBillSelect').value);
   if(!agentId){alert('Agent chuno!');return;}
@@ -1324,12 +1405,62 @@ function saveAgentBill(){
   var grand=Math.max(0,sub-disc);
   var paid=parseFloat(document.getElementById('agentAmountPaid').value)||0;
   var due=Math.max(0,grand-paid);
-  agentBills.push({id:Date.now(),agentId:agentId,date:document.getElementById('agentBillDate').value,items:items,discount:disc,subtotal:sub,grand:grand,paid:paid,due:due,payments:paid>0?[{date:document.getElementById('agentBillDate').value,amount:paid}]:[]});
-  saveAgentData(); alert('Agent bill save ho gaya!'); clearAgentBill();
-  renderAgentBills(); renderAgents();
+
+  if(editingAgentBillId){
+    var idx=agentBills.findIndex(function(x){return x.id===editingAgentBillId;});
+    if(idx!==-1){
+      var oldPaid=agentBills[idx].paid; var oldPayments=agentBills[idx].payments||[];
+      agentBills[idx]={id:editingAgentBillId,agentId:agentId,date:document.getElementById('agentBillDate').value,items:items,discount:disc,subtotal:sub,grand:grand,paid:oldPaid,due:Math.max(0,grand-oldPaid),payments:oldPayments};
+    }
+    editingAgentBillId=null;
+    var sb=document.querySelector('#agents .btn-green');if(sb){sb.textContent='💾 Save Bill';sb.style.background='';}
+    saveAgentData(); alert('Agent bill update ho gaya!'); clearAgentBill(); renderAgentBills(); renderAgents();
+  } else {
+    agentBills.push({id:Date.now(),agentId:agentId,date:document.getElementById('agentBillDate').value,items:items,discount:disc,subtotal:sub,grand:grand,paid:paid,due:due,payments:paid>0?[{date:document.getElementById('agentBillDate').value,amount:paid}]:[]});
+    saveAgentData(); alert('Agent bill save ho gaya!'); clearAgentBill(); renderAgentBills(); renderAgents();
+  }
 }
 
-function clearAgentBill(){initAgentBill();}
+function clearAgentBill(){editingAgentBillId=null;initAgentBill();var sb=document.querySelector('#agents .btn-green');if(sb){sb.textContent='💾 Save Bill';sb.style.background='';}}
+
+function editAgentBill(id){
+  var b=agentBills.find(function(x){return x.id===id;});
+  if(!b) return;
+  editingAgentBillId=id;
+  populateAgentDropdowns();
+  document.getElementById('agentBillSelect').value=b.agentId;
+  document.getElementById('agentBillDate').value=b.date;
+  document.getElementById('agentBillItems').innerHTML='';
+  document.getElementById('agentDiscountAmt').value=b.discount||'';
+  document.getElementById('agentAmountPaid').value='';
+  agentBillItemCount=0;
+  var cls=['All Classes','Anubhuti (EA)','AC First (1A)','Vistadome AC (EV)','Exec. Chair (EC)','AC 2 Tier (2A)','First Class (FC)','AC 3 Tier (3A)','AC 3 Eco (3E)','AC Chair (CC)','Sleeper (SL)','Second Sitting (2S)'];
+  b.items.forEach(function(it){
+    agentBillItemCount++;
+    var rowId='agitem_'+agentBillItemCount;
+    var row=document.createElement('div');
+    row.id=rowId; row.className='bill-row ag-bill-item-row';
+    row.innerHTML=
+      '<div><div class="st-wrap" style="width:100%;">'+stationInput(rowId+'_from','From')+'</div></div>'+
+      '<div><div class="st-wrap" style="width:100%;">'+stationInput(rowId+'_to','To')+'</div></div>'+
+      '<div><select class="ag-item-class" oninput="calcAgentTotal()" style="width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;cursor:pointer;">'+cls.map(function(c){return '<option'+(c===it.cls?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+      '<div><input type="date" class="ag-item-date" value="'+(it.date||'')+'" oninput="calcAgentTotal()"></div>'+
+      '<div style="justify-content:center;"><input type="number" class="ag-item-qty" value="'+(it.qty||1)+'" min="1" oninput="calcAgentTotal()" style="text-align:center;width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 4px;font-size:13px;"></div>'+
+      '<div><input type="number" value="'+(it.price||'')+'" class="ag-item-price" oninput="calcAgentTotal()"></div>'+
+      '<div><input type="number" value="'+(it.extra||'')+'" class="ag-item-extra" oninput="calcAgentTotal()"></div>'+
+      '<div style="padding:8px;font-weight:700;color:#38bdf8;font-size:13px;" class="ag-item-total">Rs.0</div>'+
+      '<div style="justify-content:center;padding:4px;"><button class="btn btn-red" style="padding:4px 8px;font-size:12px;" onclick="removeAgentBillItem(\''+rowId+'\')">✕</button></div>';
+    document.getElementById('agentBillItems').appendChild(row);
+    initStationDrop(rowId+'_from'); initStationDrop(rowId+'_to');
+    setTimeout(function(){
+      var fi=document.getElementById(rowId+'_from'); if(fi) fi.value=it.from||'';
+      var ti=document.getElementById(rowId+'_to'); if(ti) ti.value=it.to||'';
+    },50);
+  });
+  calcAgentTotal();
+  var sb=document.querySelector('#agents .btn-green');if(sb){sb.textContent='💾 Update Bill';sb.style.background='#f97316';}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 
 function renderAgentBills(search){
   search=search||'';
@@ -1345,6 +1476,7 @@ function renderAgentBills(search){
       '<td><span class="badge '+(b.due>0?'badge-incomplete':'badge-complete')+'">'+(b.due>0?'Due':'Paid')+'</span></td>'+
       '<td style="display:flex;gap:4px;">'+
         '<button class="btn btn-blue" style="padding:4px 8px;" onclick="viewAgentBill('+b.id+')">View</button>'+
+        '<button class="btn btn-purple" style="padding:4px 8px;" onclick="editAgentBill('+b.id+')">Edit</button>'+
         (b.due>0?'<button class="btn btn-orange" style="padding:4px 8px;" onclick="openAgentPayModal('+b.id+')">Pay</button>':'')+
         '<button class="btn btn-red" style="padding:4px 8px;" onclick="deleteAgentBill('+b.id+')">Del</button>'+
       '</td></tr>';
