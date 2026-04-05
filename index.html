@@ -452,14 +452,17 @@ canvas{max-height:300px;}
 
 <!-- Pay Modal -->
 <div class="modal-overlay" id="payModal">
-  <div class="modal">
+  <div class="modal" style="max-width:420px;">
     <div class="modal-header"><h3>💰 Receive Payment</h3><button class="btn btn-red" onclick="closePayModal()">✕</button></div>
-    <div class="modal-body">
-      <div id="payModalContent" style="margin-bottom:12px;"></div>
-      <div style="display:flex;gap:10px;">
-        <input type="number" id="payAmount" placeholder="Amount" style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;">
-        <button class="btn btn-green" onclick="receivePayment()">Receive</button>
+    <div class="modal-body" style="padding-bottom:20px;">
+      <div id="payModalContent" style="margin-bottom:14px;font-size:14px;"></div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <input type="number" id="payAmount" placeholder="Amount" style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;" oninput="updateWABtn()">
+        <button class="btn btn-green" onclick="receivePayment()">✅ Receive</button>
       </div>
+      <button id="waBillBtn" onclick="sendWAPayment()" style="width:100%;background:#25D366;color:white;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;display:block;text-align:center;">
+        💬 WhatsApp pe Bhejo
+      </button>
     </div>
   </div>
 </div>
@@ -480,14 +483,17 @@ canvas{max-height:300px;}
 
 <!-- Agent Pay Modal -->
 <div class="modal-overlay" id="agentPayModal">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal" style="max-width:420px;">
     <div class="modal-header"><h3>💰 Agent ko Payment Do</h3><button class="btn btn-red" onclick="document.getElementById('agentPayModal').classList.remove('open')">✕</button></div>
-    <div class="modal-body">
-      <div id="agentPayModalContent" style="margin-bottom:12px;"></div>
-      <div style="display:flex;gap:10px;">
-        <input type="number" id="agentPayModalAmt" placeholder="Amount" style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;">
-        <button class="btn btn-green" onclick="receiveAgentPayment()">Pay Karo</button>
+    <div class="modal-body" style="padding-bottom:20px;">
+      <div id="agentPayModalContent" style="margin-bottom:14px;font-size:14px;"></div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <input type="number" id="agentPayModalAmt" placeholder="Amount" style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;" oninput="updateAgentWABtn()">
+        <button class="btn btn-green" onclick="receiveAgentPayment()">✅ Pay Karo</button>
       </div>
+      <button id="waAgentBtn" onclick="sendAgentWAPayment()" style="width:100%;background:#25D366;color:white;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;display:block;text-align:center;">
+        💬 WhatsApp pe Bhejo
+      </button>
     </div>
   </div>
 </div>
@@ -864,8 +870,29 @@ function renderBills(search){
   var list=bills.filter(function(b){var c=customers.find(function(x){return x.id===b.customerId;});return c&&c.name.toLowerCase().indexOf(search.toLowerCase())>=0;}).sort(function(a,b){return b.id-a.id;});
   tbody.innerHTML=list.map(function(b,i){
     var c=customers.find(function(x){return x.id===b.customerId;});
-    return '<tr><td>'+(i+1)+'</td><td>'+b.date+'</td><td>'+(c?c.name:'?')+'</td><td>Rs.'+b.grand.toFixed(2)+'</td><td>Rs.'+b.paid.toFixed(2)+'</td><td style="color:'+(b.due>0?'#f87171':'#34d399')+';">Rs.'+b.due.toFixed(2)+'</td><td><span class="badge '+(b.due>0?'badge-incomplete':'badge-complete')+'">'+(b.due>0?'Due':'Paid')+'</span></td><td style="display:flex;gap:4px;"><button class="btn btn-blue" style="padding:4px 8px;" onclick="viewBill('+b.id+')">View</button><button class="btn btn-purple" style="padding:4px 8px;" onclick="editBill('+b.id+')">Edit</button>'+(b.due>0?'<button class="btn btn-orange" style="padding:4px 8px;" onclick="openPayModal('+b.id+')">Pay</button>':'')+'<button class="btn btn-red" style="padding:4px 8px;" onclick="deleteBill('+b.id+')">Del</button></td></tr>';
+    var actions='<button class="btn btn-blue" style="padding:4px 8px;" onclick="viewBill('+b.id+')">View</button>'+
+      '<button class="btn btn-purple" style="padding:4px 8px;" onclick="editBill('+b.id+')">Edit</button>'+
+      (b.due>0?'<button class="btn btn-orange" style="padding:4px 8px;" onclick="openPayModal('+b.id+')">Pay</button>':'')+
+      (b.due>0?'<button style="padding:4px 8px;background:#25D366;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;" onclick="sendDueReminder('+b.id+')">💬 Reminder</button>':'')+
+      '<button class="btn btn-red" style="padding:4px 8px;" onclick="deleteBill('+b.id+')">Del</button>';
+    return '<tr><td>'+(i+1)+'</td><td>'+b.date+'</td><td>'+(c?c.name:'?')+'</td><td>Rs.'+b.grand.toFixed(2)+'</td><td>Rs.'+b.paid.toFixed(2)+'</td><td style="color:'+(b.due>0?'#f87171':'#34d399')+';">Rs.'+b.due.toFixed(2)+'</td><td><span class="badge '+(b.due>0?'badge-incomplete':'badge-complete')+'">'+(b.due>0?'Due':'Paid')+'</span></td><td style="display:flex;gap:4px;flex-wrap:wrap;">'+actions+'</td></tr>';
   }).join('')||'<tr><td colspan="8" style="text-align:center;color:#475569;">No bills</td></tr>';
+}
+
+function sendDueReminder(id){
+  var b=bills.find(function(x){return x.id===id;});
+  var c=customers.find(function(x){return x.id===b.customerId;});
+  var phone=(c&&c.phone)?c.phone.replace(/\D/g,''):'';
+  var msg='🔔 *Payment Reminder — RailDesk*\n\n'+
+    'Dear *'+(c?c.name:'')+'*,\n\n'+
+    'Your payment of *Rs.'+b.due.toFixed(2)+'* is pending.\n'+
+    '📋 Bill Date: '+b.date+'\n'+
+    '💰 Bill Total: Rs.'+b.grand.toFixed(2)+'\n'+
+    '✅ Paid: Rs.'+b.paid.toFixed(2)+'\n'+
+    '⚠ Due: *Rs.'+b.due.toFixed(2)+'*\n\n'+
+    'Please make the payment at your earliest convenience.\n'+
+    '_Thank you — RailDesk_';
+  window.open('https://wa.me/'+(phone?'91'+phone:'')+'?text='+encodeURIComponent(msg),'_blank');
 }
 function deleteBill(id){if(!confirm('Delete bill?'))return;bills=bills.filter(function(b){return b.id!==id;});saveData();renderBills();}
 function viewBill(id){
@@ -888,19 +915,54 @@ function openPayModal(id){
   currentPayBillId=id;
   var b=bills.find(function(x){return x.id===id;});
   var c=customers.find(function(x){return x.id===b.customerId;});
-  document.getElementById('payModalContent').innerHTML='<strong style="color:#f1f5f9;">'+(c?c.name:'')+'</strong> &nbsp; Due: <span style="color:#f87171;font-weight:700;">Rs.'+b.due.toFixed(2)+'</span>';
+  document.getElementById('payModalContent').innerHTML=
+    '<strong style="color:#f1f5f9;">'+(c?c.name:'')+'</strong>'+
+    (c&&c.phone?' &nbsp;<span style="color:#38bdf8;font-size:12px;">📱 '+c.phone+'</span>':'')+
+    ' &nbsp; Due: <span style="color:#f87171;font-weight:700;">Rs.'+b.due.toFixed(2)+'</span>';
   document.getElementById('payAmount').value='';
   document.getElementById('payModal').classList.add('open');
+}
+function updateWABtn(){
+  var amt=parseFloat(document.getElementById('payAmount').value)||0;
+  document.getElementById('waBillBtn').innerHTML='💬 WhatsApp pe Bhejo'+(amt>0?' — Rs.'+amt.toFixed(2):'');
+}
+function sendWAPayment(){
+  var amt=parseFloat(document.getElementById('payAmount').value)||0;
+  var b=bills.find(function(x){return x.id===currentPayBillId;});
+  var c=customers.find(function(x){return x.id===b.customerId;});
+  var phone=(c&&c.phone)?c.phone.replace(/\D/g,''):'';
+  var remaining=Math.max(0,b.due-amt);
+  var msg='🧾 *RailDesk Payment Receipt*\n\n'+
+    '👤 Customer: *'+(c?c.name:'')+'*\n'+
+    '💰 Amount Paid: *Rs.'+amt.toFixed(2)+'*\n'+
+    '📋 Bill Total: Rs.'+b.grand.toFixed(2)+'\n'+
+    (remaining>0?'⚠ Remaining Due: *Rs.'+remaining.toFixed(2)+'*\n':'✅ Bill Fully Paid!\n')+
+    '📅 Date: '+new Date().toLocaleDateString('en-IN')+'\n\n'+
+    '_Thank you for your payment!_';
+  var url='https://wa.me/'+(phone?'91'+phone:'')+'?text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
 }
 function closePayModal(){document.getElementById('payModal').classList.remove('open');currentPayBillId=null;}
 function receivePayment(){
   var amt=parseFloat(document.getElementById('payAmount').value);
   if(!amt||amt<=0){alert('Enter valid amount!');return;}
   var b=bills.find(function(x){return x.id===currentPayBillId;});
+  var c=customers.find(function(x){return x.id===b.customerId;});
   var actual=Math.min(amt,b.due);
   b.paid+=actual; b.due-=actual;
   b.payments.push({date:new Date().toISOString().split('T')[0],amount:actual});
-  saveData(); closePayModal(); renderBills(); alert('Rs.'+actual.toFixed(2)+' received!');
+  saveData(); closePayModal(); renderBills();
+  // WhatsApp auto open
+  var phone=(c&&c.phone)?c.phone.replace(/\D/g,''):'';
+  var remaining=b.due;
+  var msg='🧾 *RailDesk Payment Receipt*\n\n'+
+    '👤 Customer: *'+(c?c.name:'')+'*\n'+
+    '💰 Amount Paid: *Rs.'+actual.toFixed(2)+'*\n'+
+    '📋 Bill Total: Rs.'+b.grand.toFixed(2)+'\n'+
+    (remaining>0?'⚠ Remaining Due: *Rs.'+remaining.toFixed(2)+'*\n':'✅ Bill Fully Paid!\n')+
+    '📅 Date: '+new Date().toLocaleDateString('en-IN')+'\n\n'+
+    '_Thank you for your payment! — RailDesk_';
+  window.open('https://wa.me/'+(phone?'91'+phone:'')+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ---- TICKETS ----
@@ -1509,15 +1571,39 @@ function openAgentPayModal(id){
   currentAgentPayBillId=id;
   var b=agentBills.find(function(x){return x.id===id;});
   var a=agents.find(function(x){return x.id===b.agentId;});
-  document.getElementById('agentPayModalContent').innerHTML='<strong style="color:#f1f5f9;">'+(a?a.name:'')+'</strong> &nbsp; Due: <span style="color:#f87171;font-weight:700;">Rs.'+b.due.toFixed(2)+'</span>';
+  document.getElementById('agentPayModalContent').innerHTML=
+    '<strong style="color:#f1f5f9;">'+(a?a.name:'')+'</strong>'+
+    (a&&a.phone?' &nbsp;<span style="color:#38bdf8;font-size:12px;">📱 '+a.phone+'</span>':'')+
+    ' &nbsp; Due: <span style="color:#f87171;font-weight:700;">Rs.'+b.due.toFixed(2)+'</span>';
   document.getElementById('agentPayModalAmt').value='';
   document.getElementById('agentPayModal').classList.add('open');
+}
+function updateAgentWABtn(){
+  var amt=parseFloat(document.getElementById('agentPayModalAmt').value)||0;
+  document.getElementById('waAgentBtn').innerHTML='💬 WhatsApp pe Bhejo'+(amt>0?' — Rs.'+amt.toFixed(2):'');
+}
+function sendAgentWAPayment(){
+  var amt=parseFloat(document.getElementById('agentPayModalAmt').value)||0;
+  var b=agentBills.find(function(x){return x.id===currentAgentPayBillId;});
+  var a=agents.find(function(x){return x.id===b.agentId;});
+  var phone=(a&&a.phone)?a.phone.replace(/\D/g,''):'';
+  var remaining=Math.max(0,b.due-amt);
+  var msg='🧾 *RailDesk Agent Payment*\n\n'+
+    '👤 Agent: *'+(a?a.name:'')+'*\n'+
+    '💰 Amount Paid: *Rs.'+amt.toFixed(2)+'*\n'+
+    '📋 Bill Total: Rs.'+b.grand.toFixed(2)+'\n'+
+    (remaining>0?'⚠ Remaining Due: *Rs.'+remaining.toFixed(2)+'*\n':'✅ Bill Fully Paid!\n')+
+    '📅 Date: '+new Date().toLocaleDateString('en-IN')+'\n\n'+
+    '_RailDesk Billing System_';
+  var url='https://wa.me/'+(phone?'91'+phone:'')+'?text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
 }
 
 function receiveAgentPayment(){
   var amt=parseFloat(document.getElementById('agentPayModalAmt').value);
   if(!amt||amt<=0){alert('Valid amount enter karo!');return;}
   var b=agentBills.find(function(x){return x.id===currentAgentPayBillId;});
+  var a=agents.find(function(x){return x.id===b.agentId;});
   var actual=Math.min(amt,b.due);
   b.paid+=actual; b.due-=actual;
   b.payments=b.payments||[];
@@ -1526,7 +1612,17 @@ function receiveAgentPayment(){
   document.getElementById('agentPayModal').classList.remove('open');
   currentAgentPayBillId=null;
   renderAgentBills(); renderAgents();
-  alert('Rs.'+actual.toFixed(2)+' payment ho gaya!');
+  // WhatsApp auto open
+  var phone=(a&&a.phone)?a.phone.replace(/\D/g,''):'';
+  var remaining=b.due;
+  var msg='🧾 *RailDesk Agent Payment*\n\n'+
+    '👤 Agent: *'+(a?a.name:'')+'*\n'+
+    '💰 Amount Paid: *Rs.'+actual.toFixed(2)+'*\n'+
+    '📋 Bill Total: Rs.'+b.grand.toFixed(2)+'\n'+
+    (remaining>0?'⚠ Remaining Due: *Rs.'+remaining.toFixed(2)+'*\n':'✅ Bill Fully Paid!\n')+
+    '📅 Date: '+new Date().toLocaleDateString('en-IN')+'\n\n'+
+    '_RailDesk Billing System_';
+  window.open('https://wa.me/'+(phone?'91'+phone:'')+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 function renderAgents(search){
