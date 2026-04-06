@@ -143,6 +143,7 @@ canvas{max-height:300px;}
       </div>
       <div id="loginError" style="color:#f87171;font-size:13px;display:none;text-align:center;padding:8px;background:#2d1515;border-radius:6px;"></div>
       <button onclick="doLogin()" style="background:#0ea5e9;color:white;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;" onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">Login →</button>
+      <button onclick="localStorage.removeItem('rl_lock');localStorage.removeItem('rl_attempts');document.getElementById('loginError').style.display='none';alert('Lock clear ho gaya! Ab login karo.');" style="background:transparent;border:1px solid #334155;color:#475569;padding:8px;border-radius:8px;font-size:12px;cursor:pointer;margin-top:6px;">🔓 Lock Clear Karo</button>
     </div>
     <div style="text-align:center;margin-top:20px;font-size:11px;color:#334155;">🔒 Protected System — Unauthorized Access Not Allowed</div>
   </div>
@@ -168,6 +169,7 @@ canvas{max-height:300px;}
   <div class="nav-item" onclick="showSection('billing',this)"><span class="icon">🧾</span><span>New Bill</span></div>
   <div class="nav-item" onclick="showSection('bills',this)"><span class="icon">📋</span><span>All Bills</span></div>
   <div class="nav-item" onclick="showSection('agents',this)"><span class="icon">🤝</span><span>Bill Agents</span></div>
+  <div class="nav-item" onclick="showSection('nameagent',this)"><span class="icon">🏷️</span><span>Name Agent</span></div>
 </div>
 
 <!-- MAIN -->
@@ -434,9 +436,104 @@ canvas{max-height:300px;}
       <tbody id="agentTable"></tbody></table>
     </div>
   </div>
+
+  <!-- NAME AGENT -->
+  <div id="nameagent" class="section">
+
+    <!-- New Name Agent Form -->
+    <div class="card">
+      <h2>🏷️ New Name Agent</h2>
+      <div class="form-grid">
+        <div class="form-group"><label>Agent Name *</label><input id="nameAgentName" placeholder="Agent ka naam"></div>
+        <div class="form-group"><label>Phone</label><input id="nameAgentPhone" placeholder="Phone Number"></div>
+        <div class="form-group"><label>Address</label><input id="nameAgentAddress" placeholder="Address"></div>
+        <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-green" style="margin-top:20px;" onclick="addNameAgent()">+ Add Agent</button></div>
+      </div>
+    </div>
+
+    <!-- Default Items Settings Box -->
+    <div class="card">
+      <h2>📦 Default Items Manage Karo</h2>
+      <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Yeh items har naye bill mein automatically add honge.</p>
+      <div id="naDefaultItemsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="naNewDefaultItem" class="search-bar" style="margin:0;flex:1;" placeholder="Naya default item naam...">
+        <button class="btn btn-green" onclick="addNADefaultItem()">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Name Agent Bill -->
+    <div class="card">
+      <h2>🧾 Name Agent Bill Banao</h2>
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <select id="nameAgentBillSelect" style="flex:1;min-width:200px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;">
+          <option value="">-- Agent Chuno --</option>
+        </select>
+        <input type="date" id="nameAgentBillDate" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;">
+      </div>
+
+      <!-- Bill Grid: Item, Qty, Price, Extra, Total -->
+      <div class="bill-grid" id="nameAgentBillGrid">
+        <div style="display:grid;grid-template-columns:4fr 60px 1.3fr 1.3fr 1.3fr 50px;background:#0f172a;">
+          <div style="padding:10px 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #1e293b;">Item</div>
+          <div style="padding:10px 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #1e293b;text-align:center;">Qty</div>
+          <div style="padding:10px 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #1e293b;">Price</div>
+          <div style="padding:10px 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #1e293b;">Extra</div>
+          <div style="padding:10px 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #1e293b;">Total</div>
+          <div style="padding:10px 8px;"></div>
+        </div>
+        <div id="nameAgentBillItems"></div>
+      </div>
+      <button class="btn btn-blue" style="margin-top:10px;margin-bottom:14px;" onclick="addNameAgentBillItem()">+ Add Item</button>
+
+      <div class="bill-total">
+        <div class="bill-total-row"><span>Subtotal</span><span id="naSubtotalDisplay">Rs.0</span></div>
+        <div class="bill-total-row"><span>Discount</span><span><input type="number" id="naDiscountAmt" placeholder="0" style="width:100px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:13px;outline:none;" oninput="calcNATotal()"></span></div>
+        <div class="bill-total-row grand"><span>Grand Total</span><span id="naGrandTotalDisplay">Rs.0</span></div>
+        <div class="bill-total-row" style="color:#f87171;font-weight:700;margin-top:8px;"><span>Due Amount</span><span id="naDueDisplay">Rs.0</span></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+        <button class="btn btn-green" onclick="saveNABill()">� Save Bill</button>
+        <button class="btn btn-red" onclick="clearNABill()">🗑 Clear</button>
+      </div>
+    </div>
+
+    <!-- All Name Agent Bills -->
+    <div class="card"><h2>📋 Name Agent Bills</h2>
+      <input class="search-bar" placeholder="Search agent..." oninput="renderNABills(this.value)">
+      <table><thead><tr><th>#</th><th>Date</th><th>Agent</th><th>Total</th><th>Paid</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="nameAgentBillsTable"></tbody></table>
+    </div>
+
+    <!-- Name Agent List -->
+    <div class="card"><h2>👥 Name Agent List</h2>
+      <input class="search-bar" placeholder="Search name agent..." oninput="renderNameAgents(this.value)">
+      <table><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Address</th><th>Action</th></tr></thead>
+      <tbody id="nameAgentTable"></tbody></table>
+    </div>
+  </div>
 </div>
 
 <!-- Bill Modal -->
+<!-- NA Payment Modal -->
+<div class="modal-overlay" id="naPayModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header"><h3>💳 Payment Receive Karo</h3><button class="btn btn-red" onclick="document.getElementById('naPayModal').classList.remove('open')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="naPayBillId">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="form-group"><label>UTR / Ref No.</label><input id="naPayUtr" class="search-bar" style="margin:0;" placeholder="UTR ya Reference Number"></div>
+        <div class="form-group"><label>Amount</label><input id="naPayAmt" type="number" class="search-bar" style="margin:0;" placeholder="0" oninput="updateNAPayDue()"></div>
+        <div style="background:#0f172a;border-radius:8px;padding:12px;font-size:13px;color:#94a3b8;">
+          Total: <span id="naPayTotal" style="color:#f1f5f9;font-weight:700;"></span><br>
+          Already Paid: <span id="naPayAlready" style="color:#34d399;font-weight:700;"></span><br>
+          Remaining Due: <span id="naPayRemain" style="color:#f87171;font-weight:700;"></span>
+        </div>
+        <button class="btn btn-green" style="padding:10px;" onclick="confirmNAPayment()">✅ Payment Save Karo</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="billModal">
   <div class="modal">
     <div class="modal-header">
@@ -665,7 +762,7 @@ function saveTk(){
 }
 
 // ---- NAV ----
-var titles = {dashboard:'Dashboard',tickets:'Tickets',customers:'Customers',billing:'New Bill',bills:'All Bills',agents:'Bill Agents'};
+var titles = {dashboard:'Dashboard',tickets:'Tickets',customers:'Customers',billing:'New Bill',bills:'All Bills',agents:'Bill Agents',nameagent:'Name Agent'};
 function showSection(id,el){
   document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
@@ -677,6 +774,7 @@ function showSection(id,el){
   if(id==='billing'){populateCustomerDropdown();initBill();}
   if(id==='bills') renderBills();
   if(id==='agents'){populateAgentDropdowns();initAgentBill();renderAgentBills();renderAgents();}
+  if(id==='nameagent'){populateNADropdown();clearNABill();renderNABills();renderNameAgents();renderNADefaultItems();}
   if(id==='tickets') initTicketForm();
 }
 
@@ -1640,12 +1738,245 @@ function renderAgents(search){
   }).join('')||'<tr><td colspan="7" style="text-align:center;color:#475569;">Koi agent nahi</td></tr>';
 }
 
+// ---- NAME AGENT ----
+var nameAgents = (window.RD && window.RD.nameAgents) ? window.RD.nameAgents : [];
+var nameAgentBills = (window.RD && window.RD.nameAgentBills) ? window.RD.nameAgentBills : [];
+var naDefaultItems = (function(){
+  try { var s=localStorage.getItem('na_default_items'); return s?JSON.parse(s):[]; } catch(e){return [];}
+})();
+var naItemCount = 0;
+
+// --- Default Items Management ---
+function saveNADefaultItems(){ localStorage.setItem('na_default_items', JSON.stringify(naDefaultItems)); }
+
+function renderNADefaultItems(){
+  var el=document.getElementById('naDefaultItemsList');
+  if(!el) return;
+  el.innerHTML=naDefaultItems.map(function(item,i){
+    return '<div style="display:flex;align-items:center;gap:8px;background:#0f172a;padding:7px 10px;border-radius:6px;border:1px solid #334155;">'+
+      '<span style="flex:1;color:#e2e8f0;font-size:13px;">'+item+'</span>'+
+      '<button onclick="removeNADefaultItem('+i+')" style="background:#ef4444;border:none;color:white;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:12px;">✕</button>'+
+      '</div>';
+  }).join('')||'<div style="color:#475569;font-size:13px;">Koi default item nahi</div>';
+}
+
+function addNADefaultItem(){
+  var inp=document.getElementById('naNewDefaultItem');
+  var val=inp.value.trim();
+  if(!val) return;
+  if(naDefaultItems.indexOf(val)>=0){alert('Yeh item already hai!');return;}
+  naDefaultItems.push(val);
+  saveNADefaultItems();
+  inp.value='';
+  renderNADefaultItems();
+}
+
+function removeNADefaultItem(i){
+  naDefaultItems.splice(i,1);
+  saveNADefaultItems();
+  renderNADefaultItems();
+}
+
+function addNameAgent(){
+  var name=document.getElementById('nameAgentName').value.trim();
+  if(!name){alert('Agent ka naam required hai!');return;}
+  nameAgents.push({id:Date.now(),name:name,phone:document.getElementById('nameAgentPhone').value.trim(),address:document.getElementById('nameAgentAddress').value.trim()});
+  ['nameAgentName','nameAgentPhone','nameAgentAddress'].forEach(function(i){document.getElementById(i).value='';});
+  renderNameAgents();
+  populateNADropdown();
+}
+
+function deleteNameAgent(id){
+  if(!confirm('Name Agent delete karna chahte ho?')) return;
+  nameAgents=nameAgents.filter(function(a){return a.id!==id;});
+  nameAgentBills=nameAgentBills.filter(function(b){return b.agentId!==id;});
+  renderNameAgents(); renderNABills(); populateNADropdown();
+}
+
+function populateNADropdown(){
+  var sel=document.getElementById('nameAgentBillSelect');
+  if(!sel) return;
+  sel.innerHTML='<option value="">-- Agent Chuno --</option>'+nameAgents.map(function(a){return '<option value="'+a.id+'">'+a.name+'</option>';}).join('');
+}
+
+function addNameAgentBillItem(defaultName){
+  naItemCount++;
+  var id='na_item_'+naItemCount;
+  var listId='na_dl_'+naItemCount;
+  var itemName=defaultName||'';
+  var options=naDefaultItems.map(function(x){return '<option value="'+x+'">'+x+'</option>';}).join('');
+  var row=document.createElement('div');
+  row.id=id;
+  row.style.cssText='display:grid;grid-template-columns:4fr 60px 1.3fr 1.3fr 1.3fr 50px;border-top:1px solid #1e293b;background:#1e293b;';
+  row.innerHTML=
+    '<div style="border-right:1px solid #0f172a;position:relative;">'+
+      '<input list="'+listId+'" style="width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;" placeholder="Item naam ya search..." value="'+itemName+'" oninput="calcNATotal()">'+
+      '<datalist id="'+listId+'">'+options+'</datalist>'+
+    '</div>'+
+    '<div style="border-right:1px solid #0f172a;"><input type="number" value="1" min="1" style="width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;text-align:center;" oninput="calcNATotal()"></div>'+
+    '<div style="border-right:1px solid #0f172a;"><input type="number" value="0" style="width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;" oninput="calcNATotal()"></div>'+
+    '<div style="border-right:1px solid #0f172a;"><input type="number" value="0" style="width:100%;background:transparent;border:none;outline:none;color:#e2e8f0;padding:8px 6px;font-size:13px;" oninput="calcNATotal()"></div>'+
+    '<div style="border-right:1px solid #0f172a;display:flex;align-items:center;padding:0 6px;"><span class="na-total-cell" style="color:#38bdf8;font-size:13px;">Rs.0</span></div>'+
+    '<div style="display:flex;align-items:center;justify-content:center;"><button onclick="document.getElementById(\''+id+'\').remove();calcNATotal();" style="background:#ef4444;border:none;color:white;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:14px;">✕</button></div>';
+  document.getElementById('nameAgentBillItems').appendChild(row);
+  calcNATotal();
+}
+
+function calcNATotal(){
+  var rows=document.getElementById('nameAgentBillItems').children;
+  var sub=0;
+  Array.from(rows).forEach(function(row){
+    var inputs=row.querySelectorAll('input[type="number"]');
+    var qty=parseFloat(inputs[0]&&inputs[0].value)||1;
+    var price=parseFloat(inputs[1]&&inputs[1].value)||0;
+    var extra=parseFloat(inputs[2]&&inputs[2].value)||0;
+    var total=qty*price+extra;
+    sub+=total;
+    var cell=row.querySelector('.na-total-cell');
+    if(cell) cell.textContent='Rs.'+total.toFixed(2);
+  });
+  var disc=parseFloat(document.getElementById('naDiscountAmt').value)||0;
+  var grand=sub-disc;
+  document.getElementById('naSubtotalDisplay').textContent='Rs.'+sub.toFixed(2);
+  document.getElementById('naGrandTotalDisplay').textContent='Rs.'+grand.toFixed(2);
+  document.getElementById('naDueDisplay').textContent='Rs.'+grand.toFixed(2);
+}
+
+function saveNABill(){
+  var agentId=document.getElementById('nameAgentBillSelect').value;
+  if(!agentId){alert('Agent chuno!');return;}
+  var agent=nameAgents.find(function(a){return a.id==agentId;});
+  var rows=document.getElementById('nameAgentBillItems').children;
+  var items=[];
+  Array.from(rows).forEach(function(row){
+    var inputs=row.querySelectorAll('input');
+    var name=inputs[0]?inputs[0].value.trim():'';
+    var numInputs=row.querySelectorAll('input[type="number"]');
+    var qty=parseFloat(numInputs[0]&&numInputs[0].value)||1;
+    var price=parseFloat(numInputs[1]&&numInputs[1].value)||0;
+    var extra=parseFloat(numInputs[2]&&numInputs[2].value)||0;
+    if(name||price) items.push({name:name,qty:qty,price:price,extra:extra,total:qty*price+extra});
+  });
+  if(!items.length){alert('Koi item nahi!');return;}
+  var disc=parseFloat(document.getElementById('naDiscountAmt').value)||0;
+  var paid1=0, paid2=0, utr1='', utr2='';
+  var sub=items.reduce(function(s,i){return s+i.total;},0);
+  var grand=sub-disc;
+  nameAgentBills.push({
+    id:Date.now(),agentId:parseInt(agentId),agentName:agent.name,agentPhone:agent.phone||'',
+    date:document.getElementById('nameAgentBillDate').value,
+    items:items,subtotal:sub,discount:disc,total:grand,
+    paid:0,due:grand,payments:[]
+  });
+  clearNABill(); renderNABills();
+  alert('Bill save ho gaya!');
+}
+
+function clearNABill(){
+  document.getElementById('nameAgentBillItems').innerHTML='';
+  document.getElementById('naDiscountAmt').value='';
+  naItemCount=0; calcNATotal();
+  naDefaultItems.forEach(function(name){ addNameAgentBillItem(name); });
+}
+
+function openNAPayModal(id){
+  var b=nameAgentBills.find(function(x){return x.id===id;});
+  if(!b) return;
+  document.getElementById('naPayBillId').value=id;
+  document.getElementById('naPayUtr').value='';
+  document.getElementById('naPayAmt').value='';
+  document.getElementById('naPayTotal').textContent='Rs.'+b.total.toFixed(2);
+  document.getElementById('naPayAlready').textContent='Rs.'+b.paid.toFixed(2);
+  document.getElementById('naPayRemain').textContent='Rs.'+b.due.toFixed(2);
+  document.getElementById('naPayModal').classList.add('open');
+}
+
+function updateNAPayDue(){
+  var id=parseInt(document.getElementById('naPayBillId').value);
+  var b=nameAgentBills.find(function(x){return x.id===id;});
+  if(!b) return;
+  var amt=parseFloat(document.getElementById('naPayAmt').value)||0;
+  var remain=b.due-amt;
+  document.getElementById('naPayRemain').textContent='Rs.'+remain.toFixed(2);
+}
+
+function confirmNAPayment(){
+  var id=parseInt(document.getElementById('naPayBillId').value);
+  var b=nameAgentBills.find(function(x){return x.id===id;});
+  if(!b) return;
+  var utr=document.getElementById('naPayUtr').value.trim();
+  var amt=parseFloat(document.getElementById('naPayAmt').value)||0;
+  if(!amt){alert('Amount bharo!');return;}
+  if(!utr){alert('UTR / Ref number bharo!');return;}
+  b.payments=b.payments||[];
+  b.payments.push({utr:utr,amt:amt,date:new Date().toLocaleDateString('en-IN')});
+  b.paid=b.paid+amt;
+  b.due=b.total-b.paid;
+  document.getElementById('naPayModal').classList.remove('open');
+  renderNABills();
+}
+
+function sendNAWhatsApp(id){
+  var b=nameAgentBills.find(function(x){return x.id===id;});
+  if(!b) return;
+  var phone=b.agentPhone.replace(/\D/g,'');
+  if(!phone){alert('Agent ka phone number nahi hai!');return;}
+  var itemLines=b.items.map(function(it){return '• '+it.name+' x'+it.qty+' = Rs.'+it.total.toFixed(2);}).join('\n');
+  var payLines=(b.payments&&b.payments.length)?b.payments.map(function(p){return '• UTR: '+p.utr+' — Rs.'+p.amt.toFixed(2);}).join('\n'):'Koi payment nahi';
+  var msg='🧾 *Payment Reminder*\n\n'+
+    'Agent: *'+b.agentName+'*\n'+
+    'Date: '+b.date+'\n\n'+
+    '*Items:*\n'+itemLines+'\n\n'+
+    'Total: *Rs.'+b.total.toFixed(2)+'*\n'+
+    '*Payments Received:*\n'+payLines+'\n'+
+    '*Due: Rs.'+b.due.toFixed(2)+'*\n\n'+
+    'Kripya jaldi payment karein. 🙏';
+  window.open('https://wa.me/91'+phone+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+function renderNABills(search){
+  search=search||'';
+  var tbody=document.getElementById('nameAgentBillsTable');
+  if(!tbody) return;
+  var list=nameAgentBills.filter(function(b){return b.agentName.toLowerCase().indexOf(search.toLowerCase())>=0;});
+  tbody.innerHTML=list.map(function(b,i){
+    var status=b.due<=0?'<span class="badge badge-complete">Paid</span>':'<span class="badge badge-pending">Due</span>';
+    return '<tr><td>'+(i+1)+'</td><td>'+b.date+'</td><td>'+b.agentName+'</td><td>Rs.'+b.total.toFixed(2)+'</td><td>Rs.'+b.paid.toFixed(2)+'</td><td style="color:#f87171;">Rs.'+b.due.toFixed(2)+'</td><td>'+status+'</td>'+
+      '<td style="display:flex;gap:4px;flex-wrap:wrap;">'+
+      (b.due>0?'<button class="btn btn-green" style="padding:4px 8px;font-size:11px;" onclick="openNAPayModal('+b.id+')">💳 Pay</button>':'')+
+      (b.due>0?'<button class="btn" style="padding:4px 8px;background:#25D366;color:white;font-size:11px;" onclick="sendNAWhatsApp('+b.id+')">📲 WA</button>':'')+
+      '<button class="btn btn-red" style="padding:4px 8px;" onclick="deleteNABill('+b.id+')">Del</button>'+
+      '</td></tr>';
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:#475569;">Koi bill nahi</td></tr>';
+}
+
+function deleteNABill(id){
+  if(!confirm('Bill delete karna chahte ho?')) return;
+  nameAgentBills=nameAgentBills.filter(function(b){return b.id!==id;});
+  renderNABills();
+}
+
+function renderNameAgents(search){
+  search=search||'';
+  var tbody=document.getElementById('nameAgentTable');
+  if(!tbody) return;
+  var list=nameAgents.filter(function(a){return a.name.toLowerCase().indexOf(search.toLowerCase())>=0;});
+  tbody.innerHTML=list.map(function(a,i){
+    return '<tr><td>'+(i+1)+'</td><td>'+a.name+'</td><td>'+(a.phone||'-')+'</td><td>'+(a.address||'-')+'</td>'+
+      '<td><button class="btn btn-red" style="padding:4px 10px;" onclick="deleteNameAgent('+a.id+')">Del</button></td></tr>';
+  }).join('')||'<tr><td colspan="5" style="text-align:center;color:#475569;">Koi name agent nahi</td></tr>';
+}
+
 // ---- INIT ----
 checkLogin();
 renderDashboard();
 document.getElementById('agentBillDate').value = new Date().toISOString().split('T')[0];
 populateAgentDropdowns();
 initAgentBill();
+populateNADropdown();
+document.getElementById('nameAgentBillDate').value = new Date().toISOString().split('T')[0];
+clearNABill();
+renderNADefaultItems();
 // GitHub se data load karo agar token set hai
 if (getGHToken()) { loadFromGitHub(); }
 </script>
